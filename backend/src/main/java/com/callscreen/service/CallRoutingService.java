@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RequiredArgsConstructor
 public class CallRoutingService {
 
-    private volatile boolean aiMode = false;
+    private volatile boolean aiMode = true;
     private volatile String armedAt = null;
     private volatile String disarmedAt = null;
     
