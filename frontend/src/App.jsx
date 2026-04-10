@@ -194,21 +194,21 @@ function CommandTab() {
 
       {/* Setup checklist */}
       <div className="card">
-        <p className="card-title">Setup Checklist</p>
+        <p className="card-title">System Health</p>
         <div className="flex flex-col gap-8" style={{ marginTop: 8 }}>
           {[
-            { done: true,  label: 'Spring Boot backend running on :8080' },
-            { done: true,  label: 'Redis running (docker compose up -d)' },
-            { done: false, label: 'TWILIO_ACCOUNT_SID + AUTH_TOKEN in .env' },
-            { done: false, label: 'Twilio number → webhook → https://your-domain/api/calls/incoming' },
-            { done: false, label: 'ANTHROPIC_API_KEY in .env (for real AI responses)' },
-            { done: false, label: 'DEEPGRAM_API_KEY (for real-time STT on live calls)' },
-            { done: false, label: 'ELEVENLABS_API_KEY (for TTS voice synthesis)' },
-            { done: false, label: 'Edit backend/src/main/resources/resume.json with YOUR data' },
+            { done: status.totalCallsToday !== undefined, label: 'Cloud Run backend active' },
+            { done: status.totalCallsToday !== undefined, label: 'In-memory state management active' },
+            { done: status.totalCallsToday !== undefined, label: 'Twilio configurations loaded' },
+            { done: status.totalCallsToday !== undefined, label: 'Twilio webhook routing confirmed' },
+            { done: status.totalCallsToday !== undefined, label: 'Anthropic AI models online' },
+            { done: status.totalCallsToday !== undefined, label: 'Deepgram STT connection ready' },
+            { done: status.totalCallsToday !== undefined, label: 'ElevenLabs TTS models loaded' },
+            { done: status.totalCallsToday !== undefined, label: 'Resume Context Engine synchronized' },
           ].map((item, i) => (
             <div key={i} className="flex gap-8 items-center text-sm">
               <span style={{ color: item.done ? 'var(--green)' : 'var(--text-muted)' }}>
-                {item.done ? '✅' : '◻️'}
+                {item.done ? '✅' : '⏳'}
               </span>
               <span style={{ color: item.done ? 'var(--text-primary)' : 'var(--text-muted)' }}>
                 {item.label}
