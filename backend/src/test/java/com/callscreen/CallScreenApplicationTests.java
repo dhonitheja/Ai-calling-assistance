@@ -6,7 +6,6 @@ import org.springframework.test.context.TestPropertySource;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @TestPropertySource(properties = {
-    "spring.data.redis.url=redis://localhost:6379",
     "ANTHROPIC_API_KEY=test",
     "DEEPGRAM_API_KEY=test",
     "ELEVENLABS_API_KEY=test",

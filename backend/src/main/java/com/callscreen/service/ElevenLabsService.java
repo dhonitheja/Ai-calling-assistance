@@ -27,10 +27,10 @@ public class ElevenLabsService {
             .readTimeout(30, TimeUnit.SECONDS)
             .build();
 
-    private static final String TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech/%s";
+    private static final String TTS_URL = "https://api.elevenlabs.io/v1/text-to-speech/%s?output_format=ulaw_8000";
 
     /**
-     * Synthesize text to MP3 audio bytes.
+     * Synthesize text to μ-law audio bytes.
      * Returns null if TTS is unconfigured or fails.
      */
     public byte[] synthesize(String text) {
@@ -56,7 +56,7 @@ public class ElevenLabsService {
                     .post(RequestBody.create(requestBody.getBytes(),
                             MediaType.parse("application/json")))
                     .addHeader("xi-api-key", apiKey)
-                    .addHeader("Accept", "audio/mpeg")
+                    .addHeader("Accept", "audio/basic")
                     .build();
 
             try (Response response = httpClient.newCall(request).execute()) {

@@ -2,69 +2,60 @@ package com.callscreen.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class CallRoutingService {
 
-    private static final String AI_MODE_KEY = "ai_mode";
-    private static final String ARMED_AT_KEY = "ai_armed_at";
-    private static final String DISARMED_AT_KEY = "ai_disarmed_at";
-    private static final String CALL_COUNT_KEY = "calls:today:total";
-    private static final String AI_CALL_COUNT_KEY = "calls:today:ai";
-
-    private final StringRedisTemplate redis;
+    private volatile boolean aiMode = false;
+    private volatile String armedAt = null;
+    private volatile String disarmedAt = null;
+    
+    private final AtomicInteger totalCalls = new AtomicInteger(0);
+    private final AtomicInteger aiCalls = new AtomicInteger(0);
 
     public boolean isAiModeEnabled() {
-        try {
-            String value = redis.opsForValue().get(AI_MODE_KEY);
-            return "true".equals(value);
-        } catch (Exception e) {
-            log.warn("Redis unavailable, defaulting to AI OFF: {}", e.getMessage());
-            return false;
-        }
+        return aiMode;
     }
 
     public void arm() {
-        redis.opsForValue().set(AI_MODE_KEY, "true");
-        redis.opsForValue().set(ARMED_AT_KEY, Instant.now().toString());
+        aiMode = true;
+        armedAt = Instant.now().toString();
         log.info("🤖 AI Agent ARMED at {}", Instant.now());
     }
 
     public void disarm() {
-        redis.opsForValue().set(AI_MODE_KEY, "false");
-        redis.opsForValue().set(DISARMED_AT_KEY, Instant.now().toString());
+        aiMode = false;
+        disarmedAt = Instant.now().toString();
         log.info("📴 AI Agent DISARMED at {}", Instant.now());
     }
 
     public String getArmedAt() {
-        return redis.opsForValue().get(ARMED_AT_KEY);
+        return armedAt;
     }
 
     public String getDisarmedAt() {
-        return redis.opsForValue().get(DISARMED_AT_KEY);
+        return disarmedAt;
     }
 
     public void incrementTotalCalls() {
-        redis.opsForValue().increment(CALL_COUNT_KEY);
+        totalCalls.incrementAndGet();
     }
 
     public void incrementAiCalls() {
-        redis.opsForValue().increment(AI_CALL_COUNT_KEY);
+        aiCalls.incrementAndGet();
     }
 
     public int getTotalCallsToday() {
-        String val = redis.opsForValue().get(CALL_COUNT_KEY);
-        return val != null ? Integer.parseInt(val) : 0;
+        return totalCalls.get();
     }
 
     public int getAiCallsToday() {
-        String val = redis.opsForValue().get(AI_CALL_COUNT_KEY);
-        return val != null ? Integer.parseInt(val) : 0;
+        return aiCalls.get();
     }
 }

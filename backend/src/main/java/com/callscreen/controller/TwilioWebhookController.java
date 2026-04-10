@@ -61,17 +61,7 @@ public class TwilioWebhookController {
         }
     }
 
-    /**
-     * Handles Twilio Media Stream WebSocket events.
-     * In production this would be a real WebSocket handler —
-     * this REST endpoint handles the initial setup event.
-     */
-    @PostMapping(value = "/stream", produces = MediaType.APPLICATION_XML_VALUE)
-    public ResponseEntity<String> streamWebhook(@RequestBody(required = false) String body) {
-        log.debug("Stream event: {}", body);
-        // Real WebSocket streaming handled by AudioStreamHandler
-        return ResponseEntity.ok("<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response/>");
-    }
+
 
     /**
      * Status callback from Twilio.
