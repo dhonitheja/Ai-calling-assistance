@@ -29,7 +29,7 @@ public class ResumeService {
             ClassPathResource resource = new ClassPathResource("resume.json");
             try (InputStream is = resource.getInputStream()) {
                 String json = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-                Map<?, ?> resumeMap = mapper.readValue(json, Map.class);
+                Map<String, Object> resumeMap = mapper.readValue(json, Map.class);
                 cachedResumeText = formatResumeForPrompt(json, resumeMap);
                 return cachedResumeText;
             }
@@ -40,7 +40,7 @@ public class ResumeService {
     }
 
     @SuppressWarnings("unchecked")
-    private String formatResumeForPrompt(String raw, Map<?, ?> resume) {
+    private String formatResumeForPrompt(String raw, Map<String, Object> resume) {
         StringBuilder sb = new StringBuilder();
         sb.append("NAME: ").append(resume.getOrDefault("name", "Unknown")).append("\n");
         sb.append("TITLE: ").append(resume.getOrDefault("title", "")).append("\n");
