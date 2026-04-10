@@ -1,5 +1,5 @@
 server:
-  port: 8080
+  port: ${PORT:8080}
   base-url: ${SERVER_BASE_URL:http://localhost:8080}
 
 spring:
@@ -11,7 +11,8 @@ spring:
       timeout: 2000ms
   web:
     resources:
-      add-mappings: false
+      add-mappings: true
+      static-locations: classpath:/static/
 
 # Twilio
 twilio:
