@@ -1,0 +1,47 @@
+server:
+  port: 8080
+  base-url: ${SERVER_BASE_URL:http://localhost:8080}
+
+spring:
+  application:
+    name: ai-call-screener
+  data:
+    redis:
+      url: ${REDIS_URL:redis://localhost:6379}
+      timeout: 2000ms
+  web:
+    resources:
+      add-mappings: false
+
+# Twilio
+twilio:
+  account-sid: ${TWILIO_ACCOUNT_SID:}
+  auth-token: ${TWILIO_AUTH_TOKEN:}
+  phone-number: ${TWILIO_PHONE_NUMBER:}
+
+# User config
+user:
+  real-phone: ${USER_REAL_PHONE:}
+  name: ${USER_NAME:Alex}
+
+# AI Services
+anthropic:
+  api-key: ${ANTHROPIC_API_KEY:}
+  model: claude-sonnet-4-5
+
+deepgram:
+  api-key: ${DEEPGRAM_API_KEY:}
+  model: nova-2
+
+elevenlabs:
+  api-key: ${ELEVENLABS_API_KEY:}
+  voice-id: ${ELEVENLABS_VOICE_ID:21m00Tcm4TlvDq8ikWAM}
+
+# CORS
+cors:
+  allowed-origins: ${CORS_ORIGINS:http://localhost:5173,http://localhost:3000}
+
+logging:
+  level:
+    com.callscreen: DEBUG
+    org.springframework.web.socket: DEBUG

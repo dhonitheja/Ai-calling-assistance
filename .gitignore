@@ -1,0 +1,19 @@
+# Environment — NEVER commit these
+.env
+.env.local
+.env.*.local
+frontend/.env
+
+# Build artifacts
+backend/target/
+frontend/dist/
+frontend/node_modules/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
