@@ -12,6 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import org.springframework.core.io.ClassPathResource;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -114,7 +117,13 @@ public class ClaudeService {
     }
 
     private String buildSystemPrompt() {
+        String customPrompt = loadCustomDnaPrompt();
         String resume = resumeService.getResumeAsText();
+        
+        if (customPrompt != null && !customPrompt.isBlank()) {
+            return customPrompt + "\n\n=== KNOWLEDGE BASE ===\n" + resume;
+        }
+
         return String.format("""
                 You are %s's AI assistant answering a recruiter or HR phone call.
                 
@@ -129,5 +138,19 @@ public class ClaudeService {
                 === KNOWLEDGE BASE ===
                 %s
                 """, userName, userName, resume);
+    }
+
+    private String loadCustomDnaPrompt() {
+        try {
+            ClassPathResource resource = new ClassPathResource("ai_dna.txt");
+            if (resource.exists()) {
+                try (InputStream is = resource.getInputStream()) {
+                    return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not load ai_dna.txt, using default prompt.");
+        }
+        return null;
     }
 }
