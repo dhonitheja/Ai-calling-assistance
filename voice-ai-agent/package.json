@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@deepgram/sdk": "^5.0.0",
     "@pinecone-database/pinecone": "^7.2.0",
     "clsx": "^2.1.1",
     "framer-motion": "^12.38.0",

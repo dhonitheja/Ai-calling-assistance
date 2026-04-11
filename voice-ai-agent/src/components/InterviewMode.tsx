@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { Mic, MicOff } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -17,6 +18,62 @@ export default function InterviewMode() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [isListening, setIsListening] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
+
+  const toggleMicrophone = async () => {
+    if (isListening) {
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+        mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+      }
+      socketRef.current?.close();
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const res = await fetch("/api/deepgram");
+      const { key } = await res.json();
+      if (!key) throw new Error("No deepgram key");
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      mediaRecorderRef.current = mediaRecorder;
+
+      const ws = new WebSocket(
+        "wss://api.deepgram.com/v1/listen?model=nova-2&smart_format=true&interim_results=false",
+        ["token", key]
+      );
+      socketRef.current = ws;
+
+      ws.onopen = () => {
+        mediaRecorder.addEventListener("dataavailable", (event) => {
+          if (event.data.size > 0 && ws.readyState === 1) {
+            ws.send(event.data);
+          }
+        });
+        mediaRecorder.start(250);
+        setIsListening(true);
+      };
+
+      ws.onmessage = (message) => {
+        const received = JSON.parse(message.data);
+        const transcript = received.channel.alternatives[0].transcript;
+        if (transcript && received.is_final) {
+          setInput((prev) => prev + (prev.length > 0 ? " " : "") + transcript);
+        }
+      };
+
+      ws.onerror = (e) => console.error("Deepgram Error:", e);
+      ws.onclose = () => setIsListening(false);
+
+    } catch (err) {
+      console.error(err);
+      alert("Make sure DEEPGRAM_API_KEY is placed in .env.local!");
+    }
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -54,10 +111,29 @@ export default function InterviewMode() {
       }
 
       const data = await response.json();
+      const aiText = data.content[0].text;
+      
       setMessages((prev) => [
         ...prev,
-        { role: "assistant", content: data.content[0].text },
+        { role: "assistant", content: aiText },
       ]);
+
+      // Trigger ElevenLabs Audio
+      fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: aiText })
+      })
+      .then(async (ttsRes) => {
+        if (ttsRes.ok) {
+          const blob = await ttsRes.blob();
+          const url = URL.createObjectURL(blob);
+          const audio = new Audio(url);
+          audio.play();
+        }
+      })
+      .catch(e => console.error("TTS playback error:", e));
+
     } catch (error) {
       console.error(error);
       setMessages((prev) => [
@@ -128,6 +204,18 @@ export default function InterviewMode() {
             placeholder="Type your response..."
             className="flex-1 bg-zinc-950 border border-zinc-800 rounded-md px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-emerald-500"
           />
+          <button
+            type="button"
+            onClick={toggleMicrophone}
+            className={`p-3 rounded-md transition-colors ${
+              isListening
+                ? "bg-red-500/20 text-red-500 hover:bg-red-500/30 border border-red-500/50 animate-pulse"
+                : "bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-700"
+            }`}
+            title="Toggle Microphone"
+          >
+            {isListening ? <Mic size={20} /> : <MicOff size={20} />}
+          </button>
           <button
             type="submit"
             disabled={isLoading || !input.trim()}
