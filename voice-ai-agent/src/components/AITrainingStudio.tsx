@@ -250,7 +250,8 @@ Return ONLY valid JSON, no markdown, no extra text.`,
     setDeploying(true);
     setDeployError(null);
     try {
-      const res = await fetch("http://localhost:8080/api/ai-dna", {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
+      const res = await fetch(`${backendUrl}/api/ai-dna`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ systemPrompt: aiDNA.systemPrompt }),
