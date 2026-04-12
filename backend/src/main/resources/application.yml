@@ -23,20 +23,35 @@ twilio:
 # User config
 user:
   real-phone: ${USER_REAL_PHONE:}
-  name: ${USER_NAME:Alex}
+  name: ${USER_NAME:Sai Teja Ragula}
 
 # AI Services
 anthropic:
   api-key: ${ANTHROPIC_API_KEY:}
-  model: claude-sonnet-4-5
+  model: ${ANTHROPIC_MODEL:claude-sonnet-4-6}
 
 deepgram:
   api-key: ${DEEPGRAM_API_KEY:}
-  model: nova-2
+  model: nova-3
 
 elevenlabs:
   api-key: ${ELEVENLABS_API_KEY:}
   voice-id: ${ELEVENLABS_VOICE_ID:21m00Tcm4TlvDq8ikWAM}
+
+# Web search for real-time technical answers (Brave Search API)
+brave:
+  search:
+    api-key: ${BRAVE_SEARCH_API_KEY:}
+
+# Call recordings saved to local disk
+recordings:
+  dir: ${RECORDINGS_DIR:./recordings}
+
+# Self-training: ingest call transcripts into Pinecone RAG after each call
+self:
+  training:
+    enabled: ${SELF_TRAINING_ENABLED:true}
+    ingest-url: ${SELF_TRAINING_INGEST_URL:http://localhost:3000/api/ingest}
 
 # CORS
 cors:

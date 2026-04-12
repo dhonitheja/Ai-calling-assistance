@@ -55,7 +55,7 @@ export default function AITrainingStudio() {
   const [intake, setIntake] = useState({
     resume: `Sai Teja Ragula - AI/Software Engineer
 Email: Saitejaragula007@gmail.com | Phone: +1 (312) 838-4016 | LinkedIn: linkedin.com/in/sairagula
-Location: United States (Open to Relocation / Remote)
+Location:Dallas,TX United States (Open to Relocation / Remote)
 
 SUMMARY:
 AI Engineer with 5+ years of software development experience and hands-on expertise building production AI applications with Large Language Models (LLMs). Skilled in LLM integration, multi-model orchestration, and prompt engineering using Gemini, Claude, and Vertex AI. Strong full stack foundation with Java/Spring Boot backend and React/TypeScript frontend.
@@ -115,6 +115,9 @@ Description: AI agent intercepting recruiter calls. Uses Twilio for phone layer,
   const [chatInput, setChatInput] = useState("");
   const [chatLoading, setChatLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [deployed, setDeployed] = useState(false);
+  const [deploying, setDeploying] = useState(false);
+  const [deployError, setDeployError] = useState<string | null>(null);
   const [activeField, setActiveField] = useState(null);
   const messagesEndRef = useRef(null);
 
@@ -240,6 +243,29 @@ Return ONLY valid JSON, no markdown, no extra text.`,
     navigator.clipboard.writeText(aiDNA?.systemPrompt || "");
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const deployDNA = async () => {
+    if (!aiDNA?.systemPrompt || deploying) return;
+    setDeploying(true);
+    setDeployError(null);
+    try {
+      const res = await fetch("http://localhost:8080/api/ai-dna", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ systemPrompt: aiDNA.systemPrompt }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText }));
+        throw new Error(err.error || "Deploy failed");
+      }
+      setDeployed(true);
+      setTimeout(() => setDeployed(false), 4000);
+    } catch (e: unknown) {
+      setDeployError(e instanceof Error ? e.message : "Deploy failed");
+    } finally {
+      setDeploying(false);
+    }
   };
 
   const completedIntakeCount = INTAKE_FIELDS.filter(f => intake[f.id]?.trim().length > 30).length;
@@ -461,10 +487,17 @@ Return ONLY valid JSON, no markdown, no extra text.`,
                   </div>
                 </div>
 
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", flexWrap: "wrap" }}>
+                  {deployError && (
+                    <div style={{ fontSize: "11px", color: "#e05555", alignSelf: "center" }}>{deployError}</div>
+                  )}
+                  <button onClick={deployDNA} disabled={deploying}
+                    style={{ background: deployed ? "#4a9e6a" : deploying ? "#1a1a1a" : "transparent", color: deployed ? "#fff" : deploying ? "#555" : "#c8a96e", border: `1px solid ${deployed ? "#4a9e6a" : "#c8a96e"}`, padding: "14px 28px", fontSize: "12px", letterSpacing: "2px", cursor: deploying ? "default" : "pointer", fontFamily: "inherit", fontWeight: 600, transition: "all 0.2s" }}>
+                    {deployed ? "✓ DEPLOYED" : deploying ? "DEPLOYING..." : "⚡ DEPLOY TO LIVE AI"}
+                  </button>
                   <button onClick={() => { setMessages([]); setStage("test"); }}
                     style={{ background: "#c8a96e", color: "#0e0e0e", border: "none", padding: "14px 32px", fontSize: "12px", letterSpacing: "2px", cursor: "pointer", fontFamily: "inherit", fontWeight: 700 }}>
-                    TEST YOUR AI → 
+                    TEST YOUR AI →
                   </button>
                 </div>
               </div>

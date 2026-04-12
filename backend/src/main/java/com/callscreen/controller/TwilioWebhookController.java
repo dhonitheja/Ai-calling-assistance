@@ -52,7 +52,7 @@ public class TwilioWebhookController {
             log.info("🤖 Routing to AI pipeline: {}", callSid);
             String streamWsUrl = serverBaseUrl.replace("https://", "wss://")
                     .replace("http://", "ws://") + "/api/calls/stream";
-            String twiml = buildStreamTwiML(streamWsUrl, callSid);
+            String twiml = buildStreamTwiML(streamWsUrl, callSid, from);
             return ResponseEntity.ok(twiml);
         } else {
             log.info("📱 Routing to real phone: {}", realPhone);
@@ -75,18 +75,20 @@ public class TwilioWebhookController {
         return ResponseEntity.ok(Map.of("received", "true"));
     }
 
-    private String buildStreamTwiML(String wsUrl, String callSid) {
+    private String buildStreamTwiML(String wsUrl, String callSid, String from) {
+        // No <Say> before streaming — the AI listens first and speaks only after caller does
+        String safeFrom = (from != null && !from.isBlank()) ? from : "unknown";
         return """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <Response>
-                    <Say voice="Polly.Joanna">Please hold one moment while I connect you.</Say>
                     <Connect>
                         <Stream url="%s">
                             <Parameter name="callSid" value="%s"/>
+                            <Parameter name="from" value="%s"/>
                         </Stream>
                     </Connect>
                 </Response>
-                """.formatted(wsUrl, callSid);
+                """.formatted(wsUrl, callSid, safeFrom);
     }
 
     private String buildDialTwiML(String number) {

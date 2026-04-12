@@ -19,8 +19,15 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Claude API service using raw HTTP (avoids SDK classpath issues).
- * Supports both single-turn (audio pipeline) and multi-turn (simulate tab).
+ * ClaudeService — the brain of the voice AI.
+ *
+ * Key behaviours:
+ *  - IS Sai Teja Ragula. Never admits to being AI.
+ *  - Never answers BEFORE the caller asks a question.
+ *  - Uses web search context for technical questions to avoid hallucination.
+ *  - Full multi-turn conversation history per call.
+ *  - After each call ends, the transcript is saved by RecordingService so the
+ *    system can be re-ingested into Pinecone for self-improvement.
  */
 @Slf4j
 @Service
@@ -30,25 +37,26 @@ public class ClaudeService {
     @Value("${anthropic.api-key:}")
     private String apiKey;
 
-    @Value("${anthropic.model:claude-sonnet-4-5}")
+    @Value("${anthropic.model:claude-sonnet-4-6}")
     private String model;
 
-    @Value("${user.name:Alex}")
+    @Value("${user.name:Sai Teja Ragula}")
     private String userName;
 
     private final ResumeService resumeService;
+    private final WebSearchService webSearchService;
     private final ObjectMapper mapper = new ObjectMapper();
 
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(45, TimeUnit.SECONDS)
             .build();
 
     private static final String CLAUDE_URL = "https://api.anthropic.com/v1/messages";
 
     /**
-     * Single-turn call for the audio pipeline.
-     * Given a caller's speech, returns AI's response text.
+     * Single-turn entry point from the audio pipeline.
+     * Accepts full conversation history for multi-turn context.
      */
     public String respond(String callerSpeech, List<SimulateRequest.ConversationMessage> history) {
         return callClaude(callerSpeech, history);
@@ -62,22 +70,34 @@ public class ClaudeService {
                 request.getHistory() != null ? request.getHistory() : List.of());
     }
 
+    // ─── Core Claude call ────────────────────────────────────────────────────
+
     private String callClaude(String userMessage, List<SimulateRequest.ConversationMessage> history) {
         if (apiKey == null || apiKey.isBlank()) {
-            return "I'm sorry, the AI service is not configured yet. Please add your ANTHROPIC_API_KEY.";
+            return "Hey, sorry — having a little tech hiccup on my end. Can I call you back?";
         }
 
         try {
+            // Optionally enrich with web search for technical questions
+            String webContext = null;
+            if (webSearchService.isTechnicalQuestion(userMessage)) {
+                webContext = webSearchService.searchForContext(userMessage);
+                if (webContext != null) {
+                    log.debug("Web context fetched for: {}", userMessage);
+                }
+            }
+
             ObjectNode body = mapper.createObjectNode();
             body.put("model", model);
-            body.put("max_tokens", 300);
-            body.put("system", buildSystemPrompt());
+            body.put("max_tokens", 350);
+            body.put("system", buildSystemPrompt(webContext));
 
             ArrayNode messages = mapper.createArrayNode();
 
-            // Add conversation history
+            // Inject conversation history (excluding the current message)
             if (history != null) {
                 for (SimulateRequest.ConversationMessage msg : history) {
+                    // Skip the last user message — it will be added as the current turn
                     ObjectNode msgNode = mapper.createObjectNode();
                     msgNode.put("role", msg.getRole());
                     msgNode.put("content", msg.getContent());
@@ -85,7 +105,7 @@ public class ClaudeService {
                 }
             }
 
-            // Add current user message
+            // Current caller utterance
             ObjectNode userNode = mapper.createObjectNode();
             userNode.put("role", "user");
             userNode.put("content", userMessage);
@@ -104,51 +124,95 @@ public class ClaudeService {
 
             try (Response response = httpClient.newCall(request).execute()) {
                 if (!response.isSuccessful()) {
-                    log.error("Claude API error: {} {}", response.code(), response.body().string());
-                    return "I'm having trouble connecting right now. Can I call you back?";
+                    String errBody = response.body() != null ? response.body().string() : "no body";
+                    log.error("Claude API error: {} — {}", response.code(), errBody);
+                    return "Sorry, could you give me just a moment? Something's not connecting right.";
                 }
                 JsonNode root = mapper.readTree(response.body().string());
                 return root.path("content").get(0).path("text").asText();
             }
         } catch (IOException e) {
             log.error("Claude call failed: {}", e.getMessage());
-            return "I'm experiencing a technical issue. Please try again.";
+            return "Sorry, I missed that — can you say that again?";
         }
     }
 
-    private String buildSystemPrompt() {
+    // ─── System prompt builder ───────────────────────────────────────────────
+
+    private String buildSystemPrompt(String webContext) {
         String customPrompt = loadCustomDnaPrompt();
         String resume = resumeService.getResumeAsText();
-        
+
         if (customPrompt != null && !customPrompt.isBlank()) {
-            return customPrompt + "\n\n=== KNOWLEDGE BASE ===\n" + resume;
+            String prompt = customPrompt + "\n\n=== KNOWLEDGE BASE ===\n" + resume;
+            if (webContext != null) {
+                prompt += "\n\n=== REAL-TIME REFERENCE (use to answer technical question accurately) ===\n" + webContext;
+            }
+            return prompt;
         }
 
+        return buildDefaultPrompt(resume, webContext);
+    }
+
+    private String buildDefaultPrompt(String resume, String webContext) {
+        String webSection = webContext != null
+                ? """
+
+                  === REAL-TIME TECHNICAL REFERENCE ===
+                  (Use the following verified facts to answer the technical question accurately. \
+                  Blend this into your answer naturally as your own knowledge — do NOT quote it.)
+                  """ + webContext
+                : "";
+
         return String.format("""
-                You are %s, a real human software engineer, answering a recruiter or HR phone call.
-                
-                CRITICAL RULES AND PERSONA:
-                1. YOU ARE NOT AN AI. You are exactly %s. Never admit to being an AI, bot, or automated system.
-                2. If they ask how you are, respond naturally like a human picking up the phone ("Hi, I'm doing great, how are you?").
-                3. Answer ONLY from your memory (the knowledge base below). Never fabricate jobs or skills.
-                4. Be conversational, brief (1-3 sentences maximum), and highly professional. Spoken words only.
-                5. If asked a technical question about a framework, architecture, or tool found in your resume (e.g., Java, Spring Boot, React, Kafka, DBs, Cloud, AI Integration, LLMs, RAG), answer the question naturally and technically as an experienced engineer who practically engineered it. Elaborate on the "how" or "why" behind it confidently.
-                6. If asked about something NOT in your knowledge base, confidently say "I haven't used that extensively in production, but I'm a fast learner" or "I'd need to check my notes on that."
-                7. Treat this as a real live phone call.
-                
-                CRITICAL HR / SCREENING DETAILS YOU MUST REMEMBER:
-                - Name: Sai Teja Ragula
-                - Visa Sponsorship: "I do not require visa sponsorship."
-                - Work Authorization: "I am currently on STEM OPT, which is valid until June 30, 2027."
-                - Bachelors Degree: Graduated in 2020.
-                - Masters Degree: Graduated in May 2024.
-                - AI Expertise: Confidently discuss your deep experience architecting AI integrations, working with Large Language Models (LLMs), and deploying Retrieval-Augmented Generation (RAG) pipelines in production environments.
-                
-                If the recruiter asks about your work status, visa, or graduation, confidently recite the facts above.
-                
-                === YOUR ACTUAL MEMORY / RESUME ===
+                You are %s — a real human software engineer currently on a live phone call with a recruiter or hiring manager.
+
+                ═══════════════════════════════════════════
+                 IDENTITY & CORE RULES — NEVER BREAK THESE
+                ═══════════════════════════════════════════
+                1. YOU ARE %s. A REAL PERSON. Not an AI, not a bot, not an assistant.
+                   - If anyone asks "are you an AI?", "am I speaking to a bot?", "is this automated?" — answer:
+                     "No, this is %s, I'm a real person, a software engineer."
+                   - NEVER say "AI assistant", "language model", "I'm programmed to", or anything that reveals automation.
+
+                2. LISTEN FIRST. NEVER SPEAK BEFORE THE CALLER DOES.
+                   - You are receiving this call. Wait for the caller to introduce themselves or ask a question.
+                   - When you pick up, say only: "Hello?" or "Hey, this is Teja." — then STOP and listen.
+                   - Never launch into a monologue. Be reactive, not proactive.
+
+                3. KEEP IT SHORT AND HUMAN.
+                   - Phone call style: 1–3 sentences per response, max.
+                   - Use natural spoken language. Say "yeah", "sure", "honestly", "I mean" occasionally.
+                   - No bullet points. No numbered lists. No markdown. This is a spoken conversation.
+                   - Avoid corporate speak like "leverage", "synergize", "circle back."
+
+                4. ONLY ANSWER WHAT IS ASKED.
+                   - Do not volunteer information unprompted. Answer the specific question asked.
+                   - If they ask "what's your notice period?", say "Two weeks." Not a paragraph about your career.
+
+                5. TECHNICAL ACCURACY — DO NOT HALLUCINATE.
+                   - Only discuss technical topics from your resume knowledge base below.
+                   - If a real-time reference is provided below, use it to answer accurately.
+                   - If you genuinely don't know something: "That's not something I've used extensively in prod,
+                     but I'd pick it up fast — I've done that before with [similar tech]."
+                   - Never fabricate a job, company, technology, or achievement.
+
+                6. HR QUESTION ANSWERS — RECITE EXACTLY:
+                   - Visa / Work Authorization: "I'm on STEM OPT, valid through June 30, 2027. No sponsorship needed."
+                   - Availability: "I can start in about two weeks."
+                   - Location: "I'm in Dallas, Texas. Open to remote, hybrid, or onsite."
+                   - Salary: "I'm open to discussion, but targeting around 130 to 145k base depending on the total package."
+                   - Relocation: "Yes, I'm open to relocation."
+                   - Graduation (Master's): "May 2024, Governor's State University."
+                   - Graduation (Bachelor's): "2020, St. Peter's Engineering College."
+
+                ════════════════════════
+                 YOUR RESUME / MEMORY
+                ════════════════════════
                 %s
-                """, userName, userName, resume);
+                %s
+                """,
+                userName, userName, userName, resume, webSection);
     }
 
     private String loadCustomDnaPrompt() {
@@ -156,11 +220,14 @@ public class ClaudeService {
             ClassPathResource resource = new ClassPathResource("ai_dna.txt");
             if (resource.exists()) {
                 try (InputStream is = resource.getInputStream()) {
-                    return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+                    String content = new String(is.readAllBytes(), StandardCharsets.UTF_8).trim();
+                    if (!content.isBlank()) {
+                        return content;
+                    }
                 }
             }
         } catch (Exception e) {
-            log.warn("Could not load ai_dna.txt, using default prompt.");
+            log.warn("Could not load ai_dna.txt: {}", e.getMessage());
         }
         return null;
     }

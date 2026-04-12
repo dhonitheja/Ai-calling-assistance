@@ -1,7 +1,7 @@
 {
   "name": "Sai Teja Ragula",
   "title": "AI Engineer | LLM Integration | GenAI | Full Stack",
-  "location": "United States",
+  "location": "Dallas, TX",
   "email": "Saitejaragula007@gmail.com",
   "phone": "+1 (312) 838-4016",
   "linkedinUrl": "linkedin.com/in/sairagula",
@@ -12,26 +12,82 @@
   "expectedSalary": "Open to discussion based on role and total compensation",
   "workAuthorization": "Available upon request",
   "availability": "Available for interviews immediately",
-
   "summary": "AI Engineer with 5+ years of software development experience and hands-on expertise building production AI applications with Large Language Models (LLMs). Skilled in LLM integration, multi-model orchestration, and prompt engineering using Gemini, Claude, and Vertex AI. Experienced developing AI-powered features for enterprise applications including intelligent automation, NLP-based systems, and agentic workflows. Strong full stack foundation with Java/Spring Boot backend and React/TypeScript frontend. Proficient in deploying AI systems on cloud platforms (GCP, AWS) with focus on scalability and reliability. IBM Certified in Prompt Engineering with Oracle AI Foundations certification.",
-
   "skills": {
-    "aiAndLLMs": ["LLM Integration", "Multi-Model Orchestration", "Prompt Engineering", "RAG", "Agentic Workflows", "AI Agents"],
-    "aiPlatforms": ["Google Vertex AI", "Gemini 1.5", "Claude (Anthropic)", "OpenAI API", "LangChain", "Vector Databases"],
-    "languages": ["Python", "Java 8/11/17", "TypeScript", "JavaScript (ES6+)", "SQL", "Bash"],
-    "backend": ["Spring Boot", "FastAPI", "Node.js", "RESTful APIs", "Microservices", "Apache Kafka", "Redis"],
-    "frontend": ["React.js", "Next.js", "TypeScript", "Redux", "Tailwind CSS", "HTML5", "CSS3"],
-    "cloudAndMLOps": ["GCP (Vertex AI, Cloud Storage)", "AWS (EC2, Lambda, S3)", "Docker", "Kubernetes", "CI/CD"],
-    "databases": ["PostgreSQL", "MongoDB", "Redis", "Elasticsearch", "Vector Stores", "Pinecone"],
-    "tools": ["Git", "GitHub", "JIRA", "Agile/Scrum", "JUnit", "Jest", "API Testing", "Code Reviews"]
+    "aiAndLLMs": [
+      "LLM Integration",
+      "Multi-Model Orchestration",
+      "Prompt Engineering",
+      "RAG",
+      "Agentic Workflows",
+      "AI Agents"
+    ],
+    "aiPlatforms": [
+      "Google Vertex AI",
+      "Gemini 1.5",
+      "Claude (Anthropic)",
+      "OpenAI API",
+      "LangChain",
+      "Vector Databases"
+    ],
+    "languages": [
+      "Python",
+      "Java 8/11/17",
+      "TypeScript",
+      "JavaScript (ES6+)",
+      "SQL",
+      "Bash"
+    ],
+    "backend": [
+      "Spring Boot",
+      "FastAPI",
+      "Node.js",
+      "RESTful APIs",
+      "Microservices",
+      "Apache Kafka",
+      "Redis"
+    ],
+    "frontend": [
+      "React.js",
+      "Next.js",
+      "TypeScript",
+      "Redux",
+      "Tailwind CSS",
+      "HTML5",
+      "CSS3"
+    ],
+    "cloudAndMLOps": [
+      "GCP (Vertex AI, Cloud Storage)",
+      "AWS (EC2, Lambda, S3)",
+      "Docker",
+      "Kubernetes",
+      "CI/CD"
+    ],
+    "databases": [
+      "PostgreSQL",
+      "MongoDB",
+      "Redis",
+      "Elasticsearch",
+      "Vector Stores",
+      "Pinecone"
+    ],
+    "tools": [
+      "Git",
+      "GitHub",
+      "JIRA",
+      "Agile/Scrum",
+      "JUnit",
+      "Jest",
+      "API Testing",
+      "Code Reviews"
+    ]
   },
-
   "experience": [
     {
       "company": "Frontier Communications",
       "title": "AI/Software Engineer",
       "duration": "January 2023 – Present",
-      "location": "Allen, TX",
+      "location": "Dallas, TX",
       "highlights": [
         "Integrate LLM capabilities into enterprise applications using Vertex AI and Google Cloud Platform",
         "Develop AI-powered features including NLP-based SMS integration and intelligent automation workflows",
@@ -69,27 +125,48 @@
       ]
     }
   ],
-
   "projects": [
     {
       "name": "Wealthix – AI-Powered Financial Intelligence Platform",
       "url": "github.com/dhonitheja/AI-Powered-Financial-Intelligence-Platform",
       "description": "AI-powered financial platform with multi-model orchestration using Gemini 1.5 and Claude. Implemented Hybrid Router pattern to dynamically select optimal LLM based on query complexity. Built RAG pipeline for context-aware responses using document embeddings. Deployed on AWS with monitoring and observability.",
-      "tech": ["Next.js 14", "Java 23", "FastAPI", "Gemini 1.5", "Claude", "Plaid", "Stripe", "PostgreSQL", "AWS"]
+      "tech": [
+        "Next.js 14",
+        "Java 23",
+        "FastAPI",
+        "Gemini 1.5",
+        "Claude",
+        "Plaid",
+        "Stripe",
+        "PostgreSQL",
+        "AWS"
+      ]
     },
     {
       "name": "AI Financial Co-Pilot – Automated Dispute Engine",
       "url": "github.com/dhonitheja/AI-Financial-Co-Pilot-Automated-Dispute-Engine",
       "description": "Agentic AI workflow for automated financial dispute resolution. Claude 3.5 integration for intelligent document analysis, prompt engineering pipelines for consistent AI outputs, real-time dashboard for dispute tracking.",
-      "tech": ["Claude 3.5", "Vertex AI", "Next.js", "TypeScript", "PostgreSQL"]
+      "tech": [
+        "Claude 3.5",
+        "Vertex AI",
+        "Next.js",
+        "TypeScript",
+        "PostgreSQL"
+      ]
     },
     {
       "name": "AI Call Screener",
       "description": "AI agent intercepting recruiter calls — Twilio phone layer, Deepgram real-time STT, Claude for reasoning from resume, ElevenLabs TTS voice synthesis. Spring Boot backend.",
-      "tech": ["Spring Boot", "Twilio", "Deepgram", "Claude API", "ElevenLabs", "Redis"]
+      "tech": [
+        "Spring Boot",
+        "Twilio",
+        "Deepgram",
+        "Claude API",
+        "ElevenLabs",
+        "Redis"
+      ]
     }
   ],
-
   "education": [
     {
       "degree": "Master of Science in Computer Science",
@@ -102,7 +179,6 @@
       "location": "Hyderabad, India"
     }
   ],
-
   "certifications": [
     "IBM Prompt Engineering for Everyone (2024)",
     "Oracle Cloud Infrastructure AI Foundations Associate (2024)",

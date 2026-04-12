@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 
 const TEJA_CONTEXT = `
 Name: Sai Teja Ragula | Role: Java Full Stack Developer & AI Engineer
@@ -71,24 +71,24 @@ const QUESTION_BANKS = {
 
 export default function InterviewTrainingStudio() {
   const [activeBank, setActiveBank] = useState("hiring-manager");
-  const [activeCategory, setActiveCategory] = useState(null);
-  const [answers, setAnswers] = useState({});
-  const [editingId, setEditingId] = useState(null);
-  const [generating, setGenerating] = useState({});
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [generating, setGenerating] = useState<Record<string, boolean>>({});
   const [ingesting, setIngesting] = useState(false);
   const [ingestDone, setIngestDone] = useState(false);
   const [testMode, setTestMode] = useState(false);
-  const [testQ, setTestQ] = useState(null);
+  const [testQ, setTestQ] = useState<string | null>(null);
   const [testResponse, setTestResponse] = useState("");
   const [testLoading, setTestLoading] = useState(false);
   const [completedCount, setCompletedCount] = useState(0);
   const [tab, setTab] = useState("train");
 
-  const bank = QUESTION_BANKS[activeBank];
+  const bank = QUESTION_BANKS[activeBank as keyof typeof QUESTION_BANKS];
 
   // Initialize answers with defaults
   useEffect(() => {
-    const init = {};
+    const init: Record<string, string> = {};
     Object.values(QUESTION_BANKS).forEach(b =>
       Object.values(b.categories).forEach(qs =>
         qs.forEach(q => { init[q.id] = q.defaultA; })
@@ -107,7 +107,7 @@ export default function InterviewTrainingStudio() {
   );
   const totalQ = allQuestions.length;
 
-  const improveWithAI = async (qId, question) => {
+  const improveWithAI = async (qId: string, question: string) => {
     setGenerating(p => ({ ...p, [qId]: true }));
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
@@ -116,23 +116,23 @@ export default function InterviewTrainingStudio() {
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
-          system: \`You are helping Sai Teja Ragula prepare interview answers. 
+          system: `You are helping Sai Teja Ragula prepare interview answers. 
 Improve his answer to sound more natural, conversational, and specific.
 Keep the STAR structure for behavioral questions but make it sound like real speech.
 Use contractions. Keep it concise — 3-5 sentences max for technical, brief story for behavioral.
-Reference his actual experience: \${TEJA_CONTEXT}
-Return ONLY the improved answer, no preamble.\`,
-          messages: [{ role: "user", content: \`Question: \${question}\\n\\nCurrent answer: \${answers[qId] || ""}\` }],
+Reference his actual experience: ${TEJA_CONTEXT}
+Return ONLY the improved answer, no preamble.`,
+          messages: [{ role: "user", content: `Question: ${question}\n\nCurrent answer: ${answers[qId] || ""}` }],
         }),
       });
       const data = await res.json();
       const improved = data.content?.[0]?.text;
       if (improved) setAnswers(p => ({ ...p, [qId]: improved }));
-    } catch (e) { console.error(e); }
+    } catch (unused) { console.error(unused); }
     setGenerating(p => ({ ...p, [qId]: false }));
   };
 
-  const testAnswer = async (question, answer) => {
+  const testAnswer = async (question: string, answer: string) => {
     setTestMode(true);
     setTestQ(question);
     setTestResponse("");
@@ -144,29 +144,30 @@ Return ONLY the improved answer, no preamble.\`,
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514",
           max_tokens: 1000,
-          system: \`You are a hiring manager or AI screening system. 
+          system: `You are a hiring manager or AI screening system. 
 The candidate just answered your question. 
 Give brief feedback (2-3 sentences): What was strong? What could be tighter?
 Then rate it: Strong / Solid / Needs Work
-Be direct, not fluffy.\`,
-          messages: [{ role: "user", content: \`Question: \${question}\\n\\nCandidate answered: \${answer}\` }],
+Be direct, not fluffy.`,
+          messages: [{ role: "user", content: `Question: ${question}\n\nCandidate answered: ${answer}` }],
         }),
       });
       const data = await res.json();
       setTestResponse(data.content?.[0]?.text || "");
-    } catch (e) { setTestResponse("Error — try again."); }
+    } catch { setTestResponse("Error — try again."); }
     setTestLoading(false);
   };
 
   const buildVectorChunks = () => {
-    const chunks = [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const chunks: { text: string; metadata: any }[] = [];
     Object.entries(QUESTION_BANKS).forEach(([bankId, bank]) => {
       Object.entries(bank.categories).forEach(([cat, qs]) => {
         qs.forEach(q => {
           const answer = answers[q.id] || q.defaultA;
           if (answer?.trim().length > 20) {
             chunks.push({
-              text: \`Interview Q&A — \${bank.label} (\${cat})\\nQ: \${q.q}\\nA: \${answer}\`,
+              text: `Interview Q&A — ${bank.label} (${cat})\nQ: ${q.q}\nA: ${answer}`,
               metadata: {
                 source: "interview_training",
                 bank: bankId,
@@ -195,7 +196,7 @@ Be direct, not fluffy.\`,
       });
       const data = await res.json();
       if (data.success) setIngestDone(true);
-    } catch (e) {
+    } catch {
       alert("Make sure your Next.js /api/ingest route is running");
     }
     setIngesting(false);
@@ -207,7 +208,7 @@ Be direct, not fluffy.\`,
 
   return (
     <div style={{ minHeight: "100vh", background: "#08080a", color: "#e2e8f0", fontFamily: "'IBM Plex Mono', monospace" }}>
-      <style>{\`
+      <style>{`
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=Syne:wght@700;800&display=swap');
         * { box-sizing:border-box; margin:0; padding:0; }
         ::-webkit-scrollbar{width:3px} ::-webkit-scrollbar-thumb{background:#1e293b}
@@ -218,7 +219,7 @@ Be direct, not fluffy.\`,
         textarea{resize:vertical}
         textarea:focus,input:focus{outline:none}
         .btn{border:none;cursor:pointer;font-family:inherit;letter-spacing:1px;transition:all 0.2s}
-      \`}</style>
+      `}</style>
 
       {/* Header */}
       <div style={{ borderBottom: "1px solid #0f172a", padding: "14px 28px", display: "flex", justifyContent: "space-between", alignItems: "center", background: "#08080a", position: "sticky", top: 0, zIndex: 100 }}>
@@ -233,7 +234,7 @@ Be direct, not fluffy.\`,
             <span style={{ color: "#22d3ee" }}>{completedCount}</span>/{totalQ} answers ready
           </div>
           <div style={{ background: "#0f172a", height: "6px", width: "120px", borderRadius: "0" }}>
-            <div style={{ height: "100%", width: \`\${(completedCount / totalQ) * 100}%\`, background: "#22d3ee", transition: "width 0.3s" }} />
+            <div style={{ height: "100%", width: `${(completedCount / totalQ) * 100}%`, background: "#22d3ee", transition: "width 0.3s" }} />
           </div>
         </div>
       </div>
@@ -258,7 +259,7 @@ Be direct, not fluffy.\`,
             <div style={{ padding: "12px" }}>
               {Object.entries(QUESTION_BANKS).map(([id, b]) => (
                 <button key={id} className="btn" onClick={() => { setActiveBank(id); setActiveCategory(Object.keys(b.categories)[0]); }}
-                  style={{ width: "100%", padding: "10px 12px", marginBottom: "6px", background: activeBank === id ? \`\${b.color}22\` : "transparent", border: \`1px solid \${activeBank === id ? b.color : "#0f172a"}\`, color: activeBank === id ? b.accent : "#475569", fontSize: "11px", textAlign: "left", display: "flex", alignItems: "center", gap: "8px" }}>
+                  style={{ width: "100%", padding: "10px 12px", marginBottom: "6px", background: activeBank === id ? `${b.color}22` : "transparent", border: `1px solid ${activeBank === id ? b.color : "#0f172a"}`, color: activeBank === id ? b.accent : "#475569", fontSize: "11px", textAlign: "left", display: "flex", alignItems: "center", gap: "8px" }}>
                   <span>{b.icon}</span>
                   <div>
                     <div style={{ fontWeight: activeBank === id ? 600 : 400 }}>{b.label}</div>
@@ -277,7 +278,7 @@ Be direct, not fluffy.\`,
                 const done = qs.filter(q => answers[q.id]?.trim().length > 20).length;
                 return (
                   <button key={cat} className="btn" onClick={() => setActiveCategory(cat)}
-                    style={{ width: "100%", padding: "9px 12px", marginBottom: "4px", background: activeCat === cat ? "#0f172a" : "transparent", border: \`1px solid \${activeCat === cat ? bank.color : "transparent"}\`, color: activeCat === cat ? bank.accent : "#475569", fontSize: "10px", textAlign: "left", lineHeight: 1.4 }}>
+                    style={{ width: "100%", padding: "9px 12px", marginBottom: "4px", background: activeCat === cat ? "#0f172a" : "transparent", border: `1px solid ${activeCat === cat ? bank.color : "transparent"}`, color: activeCat === cat ? bank.accent : "#475569", fontSize: "10px", textAlign: "left", lineHeight: 1.4 }}>
                     <div>{cat}</div>
                     <div style={{ fontSize: "9px", color: "#334155", marginTop: "2px" }}>{done}/{qs.length} done</div>
                   </button>
@@ -298,7 +299,7 @@ Be direct, not fluffy.\`,
               const isDone = ans.trim().length > 20;
 
               return (
-                <div key={item.id} className="fade-up" style={{ marginBottom: "24px", border: \`1px solid \${isDone ? "#0f2a1a" : "#0f172a"}\`, borderLeft: \`3px solid \${isDone ? "#22c55e" : bank.color}\`, background: "#050508" }}>
+                <div key={item.id} className="fade-up" style={{ marginBottom: "24px", border: `1px solid ${isDone ? "#0f2a1a" : "#0f172a"}`, borderLeft: `3px solid ${isDone ? "#22c55e" : bank.color}`, background: "#050508" }}>
                   {/* Question */}
                   <div style={{ padding: "16px 20px", borderBottom: "1px solid #0f172a", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                     <div style={{ display: "flex", gap: "10px", alignItems: "flex-start", flex: 1 }}>
@@ -314,7 +315,7 @@ Be direct, not fluffy.\`,
                   <div style={{ padding: "16px 20px" }}>
                     {isEditing ? (
                       <textarea value={ans} onChange={e => setAnswers(p => ({ ...p, [item.id]: e.target.value }))}
-                        rows={5} style={{ width: "100%", background: "#0a0a10", border: \`1px solid \${bank.color}\`, color: "#94a3b8", fontFamily: "inherit", fontSize: "12px", padding: "12px", lineHeight: 1.8 }} />
+                        rows={5} style={{ width: "100%", background: "#0a0a10", border: `1px solid ${bank.color}`, color: "#94a3b8", fontFamily: "inherit", fontSize: "12px", padding: "12px", lineHeight: 1.8 }} />
                     ) : (
                       <div style={{ fontSize: "12px", color: "#64748b", lineHeight: 1.9, fontStyle: ans ? "normal" : "italic" }}>
                         {ans || "Click Edit to add your answer..."}
@@ -324,18 +325,18 @@ Be direct, not fluffy.\`,
                     {/* Actions */}
                     <div style={{ display: "flex", gap: "8px", marginTop: "14px", flexWrap: "wrap" }}>
                       <button className="btn" onClick={() => setEditingId(isEditing ? null : item.id)}
-                        style={{ background: isEditing ? bank.color : "transparent", color: isEditing ? "#08080a" : bank.accent, border: \`1px solid \${bank.color}\`, padding: "6px 14px", fontSize: "9px" }}>
+                        style={{ background: isEditing ? bank.color : "transparent", color: isEditing ? "#08080a" : bank.accent, border: `1px solid ${bank.color}`, padding: "6px 14px", fontSize: "9px" }}>
                         {isEditing ? "✓ SAVE" : "EDIT"}
                       </button>
-                      <button className="btn" onClick={() => improveWithAI(item.id, item.q)}
+                      <button onClick={() => improveWithAI(item.id, item.q)}
                         disabled={generating[item.id]}
-                        style={{ background: "transparent", color: generating[item.id] ? "#334155" : "#a78bfa", border: \`1px solid \${generating[item.id] ? "#1e293b" : "#a78bfa"}\`, padding: "6px 14px", fontSize: "9px" }}
-                        className={generating[item.id] ? "shimmer" : ""}>
+                        style={{ background: "transparent", color: generating[item.id] ? "#334155" : "#a78bfa", border: `1px solid ${generating[item.id] ? "#1e293b" : "#a78bfa"}`, padding: "6px 14px", fontSize: "9px" }}
+                        className={generating[item.id] ? "shimmer btn" : "btn"}>
                         {generating[item.id] ? "IMPROVING..." : "✨ AI IMPROVE"}
                       </button>
                       <button className="btn" onClick={() => testAnswer(item.q, ans)}
                         disabled={!ans}
-                        style={{ background: "transparent", color: ans ? "#fbbf24" : "#334155", border: \`1px solid \${ans ? "#fbbf24" : "#1e293b"}\`, padding: "6px 14px", fontSize: "9px" }}>
+                        style={{ background: "transparent", color: ans ? "#fbbf24" : "#334155", border: `1px solid ${ans ? "#fbbf24" : "#1e293b"}`, padding: "6px 14px", fontSize: "9px" }}>
                         ▶ TEST
                       </button>
                       <button className="btn" onClick={() => setAnswers(p => ({ ...p, [item.id]: item.defaultA }))}
@@ -365,7 +366,7 @@ Be direct, not fluffy.\`,
               const qs = Object.values(b.categories).flat();
               const done = qs.filter(q => answers[q.id]?.trim().length > 20).length;
               return (
-                <div key={id} style={{ border: \`1px solid \${b.color}33\`, padding: "16px", background: \`\${b.color}08\` }}>
+                <div key={id} style={{ border: `1px solid ${b.color}33`, padding: "16px", background: `${b.color}08` }}>
                   <div style={{ fontSize: "9px", color: b.accent, letterSpacing: "2px", marginBottom: "8px" }}>{b.icon} {b.label.toUpperCase()}</div>
                   <div style={{ fontSize: "20px", fontFamily: "'Syne', sans-serif", fontWeight: 800, color: "#e2e8f0" }}>{done}</div>
                   <div style={{ fontSize: "9px", color: "#334155" }}>of {qs.length} ready</div>
@@ -395,10 +396,10 @@ Be direct, not fluffy.\`,
           </div>
 
           {/* Ingest button */}
-          <button className="btn" onClick={ingestToPinecone} disabled={ingesting || ingestDone}
+          <button onClick={ingestToPinecone} disabled={ingesting || ingestDone}
             style={{ width: "100%", padding: "18px", background: ingestDone ? "#0f2a1a" : ingesting ? "#0f172a" : "#22d3ee", color: ingestDone ? "#22c55e" : ingesting ? "#334155" : "#08080a", fontSize: "12px", fontWeight: 700, letterSpacing: "2px", marginBottom: "16px" }}
             className={ingesting ? "shimmer btn" : "btn"}>
-            {ingestDone ? "✓ INGESTED INTO PINECONE" : ingesting ? "EMBEDDING + STORING..." : \`⚡ INGEST \${buildVectorChunks().length} CHUNKS INTO PINECONE\`}
+            {ingestDone ? "✓ INGESTED INTO PINECONE" : ingesting ? "EMBEDDING + STORING..." : `⚡ INGEST ${buildVectorChunks().length} CHUNKS INTO PINECONE`}
           </button>
 
           {ingestDone && (
@@ -412,15 +413,15 @@ Be direct, not fluffy.\`,
           {/* Manual curl fallback */}
           <div style={{ border: "1px solid #0f172a", padding: "20px", marginTop: "20px" }}>
             <div style={{ fontSize: "9px", color: "#334155", letterSpacing: "3px", marginBottom: "14px" }}>MANUAL CURL (if button fails)</div>
-            <pre style={{ fontSize: "10px", color: "#475569", lineHeight: 1.8, overflowX: "auto", whiteSpace: "pre-wrap" }}>{\`curl -X POST http://localhost:3001/api/ingest \\\\
-  -H "Content-Type: application/json" \\\\
+            <pre style={{ fontSize: "10px", color: "#475569", lineHeight: 1.8, overflowX: "auto", whiteSpace: "pre-wrap" }}>{`curl -X POST http://localhost:3001/api/ingest \\
+  -H "Content-Type: application/json" \\
   -d '{
-    "chunks": \${JSON.stringify(buildVectorChunks().slice(0, 2).map(c => c.text), null, 2)},
+    "chunks": ${JSON.stringify(buildVectorChunks().slice(0, 2).map(c => c.text), null, 2)},
     "metadata": {
       "source": "interview_training",
       "type": "qa_pair"
     }
-  }'\`}</pre>
+  }'`}</pre>
           </div>
         </div>
       )}

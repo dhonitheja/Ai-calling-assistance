@@ -6,7 +6,8 @@ export async function POST(req: NextRequest) {
     const { chunks, metadata } = await req.json();
     const count = await upsertChunks(chunks, metadata);
     return NextResponse.json({ success: true, count });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message, stack: error.stack }, { status: 500 });
+  } catch (error) {
+    const e = error as Error;
+    return NextResponse.json({ error: e.message, stack: e.stack }, { status: 500 });
   }
 }

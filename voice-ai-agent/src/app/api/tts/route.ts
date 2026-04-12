@@ -38,8 +38,9 @@ export async function POST(request: Request) {
       },
     });
 
-  } catch (error: any) {
-    console.error("TTS Error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const e = error as Error;
+    console.error("TTS Error:", e);
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }

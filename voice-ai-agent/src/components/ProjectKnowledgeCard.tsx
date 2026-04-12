@@ -109,7 +109,7 @@ const PROJECT_DATA = {
   ],
 };
 
-const TABS = ["overview", "fullstack", "ai-engineer", "interview-qa", "vector-export"];
+// const TABS = ["overview", "fullstack", "ai-engineer", "interview-qa", "vector-export"];
 
 export default function ProjectKnowledgeCard() {
   const [tab, setTab] = useState("overview");
@@ -291,24 +291,24 @@ export default function ProjectKnowledgeCard() {
             <div style={{ background: "#f0ece4", border: "1px solid #ddd3c0", padding: "14px 18px", marginBottom: "24px", fontSize: "11px", color: "#8b6914", lineHeight: 1.8 }}>
               <strong>How to use in Spring Boot + pgvector:</strong><br />
               1. Embed each chunk using OpenAI / Claude embeddings API<br />
-              2. Store in pgvector with metadata: source="frontier", type="experience"<br />
-              3. At call time: embed recruiter question → cosine similarity search → inject top-3 chunks into Claude context
+              2. Store in pgvector with metadata: source=&quot;frontier&quot;, type=&quot;experience&quot;<br />
+              3. At call time: embed recruiter question &rarr; cosine similarity search &rarr; inject top-3 chunks into Claude context
             </div>
 
             {PROJECT_DATA.vectorChunks.map((chunk, i) => (
               <div key={i} className="vector-chunk">
                 <div style={{ fontSize: "9px", color: "#8b6914", letterSpacing: "2px", marginBottom: "8px" }}>CHUNK {String(i + 1).padStart(2, "0")}</div>
                 {chunk}
-                <button className="copy-btn" onClick={() => copy(chunk, \`v\${i}\`)}
-                  style={{ marginTop: "10px", display: "block", borderColor: copiedIdx === \`v\${i}\` ? "#d4a843" : "#3a2f1e", color: copiedIdx === \`v\${i}\` ? "#d4a843" : "#555" }}>
-                  {copiedIdx === \`v\${i}\` ? "✓ COPIED" : "COPY"}
+                <button className="copy-btn" onClick={() => copy(chunk, `v${i}`)}
+                  style={{ marginTop: "10px", display: "block", borderColor: copiedIdx === `v${i}` ? "#d4a843" : "#3a2f1e", color: copiedIdx === `v${i}` ? "#d4a843" : "#555" }}>
+                  {copiedIdx === `v${i}` ? "✓ COPIED" : "COPY"}
                 </button>
               </div>
             ))}
 
             <div style={{ background: "#1a1208", padding: "20px 24px", marginTop: "24px" }}>
               <div style={{ fontSize: "9px", color: "#8b6914", letterSpacing: "3px", marginBottom: "12px" }}>SPRING BOOT INGESTION CODE</div>
-              <pre style={{ fontSize: "10px", color: "#d4a843", lineHeight: 1.9, overflowX: "auto", whiteSpace: "pre-wrap" }}>{\`// Embed + store each chunk
+              <pre style={{ fontSize: "10px", color: "#d4a843", lineHeight: 1.9, overflowX: "auto", whiteSpace: "pre-wrap" }}>{`// Embed + store each chunk
 List<String> chunks = loadFrontierChunks();
 
 chunks.forEach(chunk -> {
@@ -328,7 +328,7 @@ chunks.forEach(chunk -> {
 // At call time — RAG retrieval
 float[] questionVec = embeddingClient.embed(recruiterQuestion);
 List<VectorMemory> context = vectorRepo
-  .findTopKByCosine(questionVec, 3);\`}</pre>
+  .findTopKByCosine(questionVec, 3);`}</pre>
             </div>
           </div>
         )}

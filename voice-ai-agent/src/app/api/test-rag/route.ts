@@ -5,7 +5,8 @@ export async function GET() {
   try {
     const context = await querySimilar("tell me about your Kafka experience", 3);
     return NextResponse.json({ success: true, context });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    const e = error as Error;
+    return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
