@@ -10,9 +10,20 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Inline env vars at build time (Cloud Run injects real ones at runtime)
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+# Increase Node memory for large Next.js builds
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+
+# Dummy env vars so Next.js doesn't fail on missing envs at build time
+ENV ANTHROPIC_API_KEY=dummy
+ENV PINECONE_API_KEY=dummy
+ENV PINECONE_INDEX=ai
+ENV DEEPGRAM_API_KEY=dummy
+ENV DEEPGRAM_PROJECT_ID=dummy
+ENV ELEVENLABS_API_KEY=dummy
+ENV ELEVENLABS_VOICE_ID=dummy
+ENV OPENAI_API_KEY=dummy
 
 RUN npm run build
 
@@ -24,7 +35,6 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=8080
 
-# Non-root user
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
@@ -33,7 +43,5 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
 USER nextjs
-
 EXPOSE 8080
-
 CMD ["node", "server.js"]
