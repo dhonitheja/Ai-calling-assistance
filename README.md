@@ -19,14 +19,14 @@ The project is built on a high-concurrency, low-latency AI pipeline:
 
 ```mermaid
 graph TD
-    A[Recruiter Call] -->|TwiML| B[Twilio Voice]
-    B -->|WebSocket Stream| C[Spring Boot Backend]
-    C -->|STT| D[Deepgram Nova-2]
-    D -->|Text Context| E[Claude 3.5 Sonnet Brain]
-    E -->|RAG Retrieval| F[Pinecone Vector DB]
-    E -->|Response Text| G[ElevenLabs Turbo v2.5]
+    A["Recruiter Call"] -->|TwiML| B["Twilio Voice"]
+    B -->|WebSocket Stream| C["Spring Boot Backend"]
+    C -->|STT| D["Deepgram Nova-2"]
+    D -->|Text Context| E["Claude 3.5 Sonnet Brain"]
+    E -->|RAG Retrieval| F["Pinecone Vector DB"]
+    E -->|Response Text| G["ElevenLabs Turbo v2.5"]
     G -->|PCM Audio| B
-    B -->|Voice| H[Recruiter Hears 'You']
+    B -->|Voice| H["Recruiter Hears 'You'"]
 ```
 
 ---
