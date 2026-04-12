@@ -1,9 +1,8 @@
 package com.callscreen.controller;
 
 import com.callscreen.service.CallRoutingService;
-import com.callscreen.service.DeepgramService;
-import com.callscreen.service.ClaudeService;
-import com.callscreen.service.ElevenLabsService;
+import com.callscreen.service.CallSessionService;
+import com.callscreen.service.CallSessionService.Mode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,14 +10,34 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Base64;
 import java.util.Map;
 
 /**
- * Twilio webhook controller.
- * POST /api/calls/incoming — entry point for all inbound Twilio calls.
- * POST /api/calls/stream   — receives Twilio Media Stream events (audio).
- * POST /api/calls/status   — receives call status callbacks.
+ * Twilio webhook controller — handles all call routing and mid-call transfers.
+ *
+ * ┌─────────────────────────────────────────────────────────────────────┐
+ *  CALL FLOW — TWO MODES
+ * ├─────────────────────────────────────────────────────────────────────┤
+ *  MODE A — AI ARMED (default)
+ *    Recruiter calls → AI answers directly → you can take over from dashboard
+ *
+ *  MODE B — AI DISARMED
+ *    Recruiter calls → YOUR phone rings → you talk
+ *    Press * on keypad → you drop off → AI takes the call
+ *    OR: tap "Transfer to AI" in dashboard → same effect
+ *
+ *  BOTH DIRECTIONS (live, no hang-up):
+ *   You→AI  :  press * on keypad  OR  click "Transfer to AI" in dashboard
+ *   AI→You  :  click "Take Back" in dashboard
+ * └─────────────────────────────────────────────────────────────────────┘
+ *
+ * Webhooks registered in Twilio:
+ *   Voice URL (incoming):   POST /api/calls/incoming
+ *   Status callback:        POST /api/calls/status
+ *
+ * Internal webhooks (called by Twilio mid-call):
+ *   POST /api/calls/handoff          — fired when you press * (you→AI)
+ *   POST /api/calls/takeback-twiml   — served when AI→You redirect fires
  */
 @Slf4j
 @RestController
@@ -27,6 +46,7 @@ import java.util.Map;
 public class TwilioWebhookController {
 
     private final CallRoutingService routingService;
+    private final CallSessionService sessionService;
 
     @Value("${user.real-phone:}")
     private String realPhone;
@@ -34,49 +54,138 @@ public class TwilioWebhookController {
     @Value("${server.base-url:http://localhost:8080}")
     private String serverBaseUrl;
 
-    /**
-     * Main webhook — Twilio hits this for every inbound call.
-     * Returns TwiML to either stream to AI or dial real number.
-     */
+    // ─── 1. Incoming call ────────────────────────────────────────────────────
+
     @PostMapping(value = "/incoming", produces = MediaType.APPLICATION_XML_VALUE)
     public ResponseEntity<String> incomingCall(
             @RequestParam(value = "CallSid", required = false) String callSid,
             @RequestParam(value = "From", required = false) String from,
             @RequestParam(value = "To", required = false) String to) {
 
-        log.info("📞 Incoming call: SID={} From={} To={}", callSid, from, to);
+        log.info("📞 Incoming: SID={} From={} To={}", callSid, from, to);
         routingService.incrementTotalCalls();
 
         if (routingService.isAiModeEnabled()) {
+            // ── AI mode ON: go straight to AI stream ──
             routingService.incrementAiCalls();
-            log.info("🤖 Routing to AI pipeline: {}", callSid);
-            String streamWsUrl = serverBaseUrl.replace("https://", "wss://")
-                    .replace("http://", "ws://") + "/api/calls/stream";
-            String twiml = buildStreamTwiML(streamWsUrl, callSid, from);
-            return ResponseEntity.ok(twiml);
+            sessionService.register(callSid, from, Mode.AI);
+            log.info("🤖 Direct to AI: {}", callSid);
+            return ResponseEntity.ok(buildStreamTwiML(callSid, from));
         } else {
-            log.info("📱 Routing to real phone: {}", realPhone);
-            String twiml = buildDialTwiML(realPhone);
-            return ResponseEntity.ok(twiml);
+            // ── AI mode OFF: ring your phone, * triggers handoff ──
+            sessionService.register(callSid, from, Mode.HUMAN);
+            log.info("📱 Ringing real phone, handoff armed: {}", callSid);
+            return ResponseEntity.ok(buildDialWithHandoffTwiML(callSid, from));
         }
     }
 
-
+    // ─── 2. You → AI  (press * on keypad) ────────────────────────────────────
 
     /**
-     * Status callback from Twilio.
+     * Twilio fires this as the <Dial action> when:
+     *   (a) you hang up your leg, or
+     *   (b) you pressed * (captured by <Number> url= param).
+     * Responds with TwiML that connects the waiting recruiter to the AI stream.
      */
+    @PostMapping(value = "/handoff", produces = MediaType.APPLICATION_XML_VALUE)
+    public ResponseEntity<String> handoffToAI(
+            @RequestParam(value = "CallSid", required = false) String callSid,
+            @RequestParam(value = "From", required = false) String from,
+            @RequestParam(value = "DialCallStatus", required = false) String dialStatus) {
+
+        log.info("🔀 Handoff You→AI: SID={} dialStatus={}", callSid, dialStatus);
+
+        // Only take over if your leg actually ended (completed/no-answer/busy)
+        // or dialStatus is null (came from the Number url= DTMF webhook)
+        sessionService.updateMode(callSid, Mode.AI);
+        routingService.incrementAiCalls();
+
+        return ResponseEntity.ok(buildStreamTwiML(callSid, from));
+    }
+
+    // ─── 3. AI → You  (TwiML served when dashboard triggers takeback) ─────────
+
+    /**
+     * Dashboard calls POST /api/transfer/to-me which uses Twilio REST API
+     * to redirect the live call here.  This TwiML dials your real phone.
+     * The recruiter stays connected — you just pick up.
+     */
+    @PostMapping(value = "/takeback-twiml", produces = MediaType.APPLICATION_XML_VALUE)
+    public ResponseEntity<String> takebackTwiml(
+            @RequestParam(value = "CallSid", required = false) String callSid,
+            @RequestParam(value = "From", required = false) String from) {
+
+        log.info("📲 Takeback AI→You: SID={}", callSid);
+        sessionService.updateMode(callSid, Mode.HUMAN);
+
+        // Dial your phone; if you don't answer, fall back to AI
+        String fallbackUrl = serverBaseUrl + "/api/calls/handoff";
+        return ResponseEntity.ok(buildDialTakebackTwiML(callSid, from, fallbackUrl));
+    }
+
+    // ─── 4. Status callback ──────────────────────────────────────────────────
+
     @PostMapping("/status")
     public ResponseEntity<Map<String, String>> statusCallback(
             @RequestParam(value = "CallSid", required = false) String callSid,
             @RequestParam(value = "CallStatus", required = false) String status,
             @RequestParam(value = "CallDuration", required = false) String duration) {
-        log.info("📊 Call {} status: {} ({}s)", callSid, status, duration);
+
+        log.info("📊 Call {} → {} ({}s)", callSid, status, duration);
+
+        if ("completed".equals(status) || "failed".equals(status) || "canceled".equals(status)) {
+            sessionService.remove(callSid);
+        }
         return ResponseEntity.ok(Map.of("received", "true"));
     }
 
-    private String buildStreamTwiML(String wsUrl, String callSid, String from) {
-        // No <Say> before streaming — the AI listens first and speaks only after caller does
+    // ─── TwiML builders ──────────────────────────────────────────────────────
+
+    /**
+     * Ring your real phone.
+     * <Dial action> = fires /handoff when YOUR leg ends (you hang up → AI takes over).
+     * <Number url>  = fires per-digit on your leg; pressing * fires /handoff immediately.
+     */
+    private String buildDialWithHandoffTwiML(String callSid, String from) {
+        if (realPhone == null || realPhone.isBlank()) {
+            return buildStreamTwiML(callSid, from);
+        }
+        String handoffUrl = serverBaseUrl + "/api/calls/handoff";
+        return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <Response>
+                    <Dial action="%s" method="POST" timeout="25">
+                        <Number url="%s" method="POST">%s</Number>
+                    </Dial>
+                </Response>
+                """.formatted(handoffUrl, handoffUrl, realPhone);
+    }
+
+    /**
+     * AI → You takeback: dial your phone.
+     * action= fires if you don't answer → falls back to AI.
+     */
+    private String buildDialTakebackTwiML(String callSid, String from, String fallbackUrl) {
+        String handoffUrl = serverBaseUrl + "/api/calls/handoff";
+        return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <Response>
+                    <Say voice="alice">Connecting you now.</Say>
+                    <Dial action="%s" method="POST" timeout="20">
+                        <Number url="%s" method="POST">%s</Number>
+                    </Dial>
+                </Response>
+                """.formatted(handoffUrl, handoffUrl, realPhone);
+    }
+
+    /**
+     * Connect the recruiter to the AI WebSocket stream.
+     * No greeting — AI waits silently for the caller to speak first.
+     */
+    private String buildStreamTwiML(String callSid, String from) {
+        String wsUrl = serverBaseUrl
+                .replace("https://", "wss://")
+                .replace("http://", "ws://") + "/api/calls/stream";
         String safeFrom = (from != null && !from.isBlank()) ? from : "unknown";
         return """
                 <?xml version="1.0" encoding="UTF-8"?>
@@ -89,23 +198,5 @@ public class TwilioWebhookController {
                     </Connect>
                 </Response>
                 """.formatted(wsUrl, callSid, safeFrom);
-    }
-
-    private String buildDialTwiML(String number) {
-        if (number == null || number.isBlank()) {
-            return """
-                    <?xml version="1.0" encoding="UTF-8"?>
-                    <Response>
-                        <Say>The number you are trying to reach is unavailable. Please try again later.</Say>
-                        <Hangup/>
-                    </Response>
-                    """;
-        }
-        return """
-                <?xml version="1.0" encoding="UTF-8"?>
-                <Response>
-                    <Dial>%s</Dial>
-                </Response>
-                """.formatted(number);
     }
 }

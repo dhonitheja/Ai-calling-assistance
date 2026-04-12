@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 // ── Hooks ──────────────────────────────────────────────────────
 function useAgentStatus() {
@@ -31,10 +31,35 @@ function useAgentStatus() {
   return { status, loading, toggle }
 }
 
+// ── useActiveCalls hook ────────────────────────────────────────
+function useActiveCalls() {
+  const [calls, setCalls] = useState([])
+
+  const fetchCalls = async () => {
+    try {
+      const res = await fetch('/api/transfer/status')
+      if (res.ok) {
+        const data = await res.json()
+        setCalls(data.calls || [])
+      }
+    } catch { /* backend offline */ }
+  }
+
+  useEffect(() => {
+    fetchCalls()
+    const interval = setInterval(fetchCalls, 3000)
+    return () => clearInterval(interval)
+  }, [])
+
+  return { calls, refresh: fetchCalls }
+}
+
 // ── CommandTab ─────────────────────────────────────────────────
 function CommandTab() {
   const { status, loading, toggle } = useAgentStatus()
+  const { calls, refresh: refreshCalls } = useActiveCalls()
   const [localArmed, setLocalArmed] = useState(false)
+  const [transferring, setTransferring] = useState(null) // callSid being transferred
   const [logs, setLogs] = useState([
     { time: '11:24:01', badge: 'sys', msg: 'System initialized. Redis connected.' },
     { time: '11:24:05', badge: 'sys', msg: 'Waiting for Twilio webhook configuration...' },
@@ -58,6 +83,32 @@ function CommandTab() {
     const now = new Date()
     const time = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`
     setLogs(prev => [...prev.slice(-100), { time, badge, msg }])
+  }
+
+  const transferCall = async (callSid, direction) => {
+    setTransferring(callSid)
+    const endpoint = direction === 'to-ai' ? '/api/transfer/to-ai' : '/api/transfer/to-me'
+    const label = direction === 'to-ai' ? '🤖 Handing off to AI...' : '📲 Transferring to your phone...'
+    addLog('ai', label)
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callSid })
+      })
+      const data = await res.json()
+      if (data.success) {
+        addLog('ok', direction === 'to-ai'
+          ? '✅ AI is now handling the call — recruiter stayed connected'
+          : '✅ Your phone is ringing — pick up to take the call')
+        refreshCalls()
+      } else {
+        addLog('sys', `⚠️ Transfer failed: ${data.error || 'unknown error'}`)
+      }
+    } catch {
+      addLog('sys', '⚠️ Transfer request failed — backend unreachable')
+    }
+    setTransferring(null)
   }
 
   const simulateCall = () => {
@@ -163,8 +214,103 @@ function CommandTab() {
           </button>
         </div>
 
+        {/* ── Active Call Transfer Panel ── */}
+        <div className="card flex flex-col gap-16" style={{ borderColor: calls.length > 0 ? 'var(--border-cyan)' : undefined }}>
+          <div className="flex items-center justify-between">
+            <p className="card-title">
+              {calls.length > 0
+                ? <span style={{ color: 'var(--cyan)' }}>🔴 Live Call{calls.length > 1 ? 's' : ''} — {calls.length} active</span>
+                : 'Live Call Transfer'}
+            </p>
+            <span style={{ fontSize: 10, color: 'var(--text-muted)', letterSpacing: 1 }}>
+              {calls.length > 0 ? 'ACTIVE' : 'IDLE'}
+            </span>
+          </div>
+
+          {calls.length === 0 ? (
+            <p className="text-muted text-sm" style={{ padding: '12px 0' }}>
+              No active calls. Transfer controls appear here during a live call.
+            </p>
+          ) : (
+            calls.map(call => (
+              <div key={call.callSid} style={{
+                background: 'rgba(0,245,255,0.04)',
+                border: '1px solid var(--border)',
+                borderRadius: 8,
+                padding: '14px 16px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 12
+              }}>
+                {/* Call info row */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>
+                      📞 {call.from || 'Unknown caller'}
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                      {Math.floor(call.durationSec / 60)}m {call.durationSec % 60}s
+                      &nbsp;·&nbsp;
+                      <span style={{ color: call.mode === 'AI' ? 'var(--green)' : 'var(--cyan)' }}>
+                        {call.mode === 'AI' ? '🤖 AI handling' : '👤 You on call'}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', fontFamily: 'monospace' }}>
+                    {call.callSid?.slice(-8)}
+                  </div>
+                </div>
+
+                {/* Transfer buttons */}
+                <div style={{ display: 'flex', gap: 8 }}>
+                  {call.mode === 'AI' ? (
+                    /* AI is on → let me take it back */
+                    <button
+                      onClick={() => transferCall(call.callSid, 'to-me')}
+                      disabled={transferring === call.callSid}
+                      style={{
+                        flex: 1, padding: '10px 0', borderRadius: 6,
+                        border: '1px solid var(--border-cyan)',
+                        background: transferring === call.callSid ? 'rgba(0,245,255,0.04)' : 'rgba(0,245,255,0.1)',
+                        color: 'var(--cyan)', fontSize: 12, fontWeight: 700,
+                        cursor: transferring === call.callSid ? 'default' : 'pointer',
+                        letterSpacing: 0.5, transition: 'all 0.2s'
+                      }}
+                    >
+                      {transferring === call.callSid ? 'Connecting...' : '📲 Take Back — Ring My Phone'}
+                    </button>
+                  ) : (
+                    /* You are on → hand off to AI */
+                    <button
+                      onClick={() => transferCall(call.callSid, 'to-ai')}
+                      disabled={transferring === call.callSid}
+                      style={{
+                        flex: 1, padding: '10px 0', borderRadius: 6,
+                        border: '1px solid var(--green)',
+                        background: transferring === call.callSid ? 'rgba(0,255,136,0.04)' : 'rgba(0,255,136,0.1)',
+                        color: 'var(--green)', fontSize: 12, fontWeight: 700,
+                        cursor: transferring === call.callSid ? 'default' : 'pointer',
+                        letterSpacing: 0.5, transition: 'all 0.2s'
+                      }}
+                    >
+                      {transferring === call.callSid ? 'Handing off...' : '🤖 Hand Off to AI'}
+                    </button>
+                  )}
+                </div>
+
+                {/* Keyboard shortcut hint */}
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: 8 }}>
+                  {call.mode !== 'AI'
+                    ? '⌨️ Or press * on your keypad to hand off without opening the dashboard'
+                    : '⌨️ AI is live — tap "Take Back" or let AI continue'}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
         {/* Live log */}
-        <div className="card flex flex-col gap-16">
+        <div className="card flex flex-col gap-16" style={{ gridColumn: '1 / -1' }}>
           <div className="flex items-center justify-between">
             <p className="card-title">Live Activity Log</p>
             <button
