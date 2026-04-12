@@ -52,7 +52,8 @@ public class ClaudeService {
             .readTimeout(45, TimeUnit.SECONDS)
             .build();
 
-    private static final String CLAUDE_URL = "https://api.anthropic.com/v1/messages";
+    private static final String CLAUDE_URL    = "https://api.anthropic.com/v1/messages";
+    private static final String FIELD_CONTENT = "content";
 
     /**
      * Single-turn entry point from the audio pipeline.
@@ -89,26 +90,26 @@ public class ClaudeService {
 
             ObjectNode body = mapper.createObjectNode();
             body.put("model", model);
-            body.put("max_tokens", 350);
+            body.put("max_tokens", 120);  // hard cap — forces short spoken answers
             body.put("system", buildSystemPrompt(webContext));
 
             ArrayNode messages = mapper.createArrayNode();
 
-            // Inject conversation history (excluding the current message)
+            // Inject past conversation history (already committed turns only)
+            // The current userMessage is NOT in history yet — added below as the new turn
             if (history != null) {
                 for (SimulateRequest.ConversationMessage msg : history) {
-                    // Skip the last user message — it will be added as the current turn
                     ObjectNode msgNode = mapper.createObjectNode();
                     msgNode.put("role", msg.getRole());
-                    msgNode.put("content", msg.getContent());
+                    msgNode.put(FIELD_CONTENT, msg.getContent());
                     messages.add(msgNode);
                 }
             }
 
-            // Current caller utterance
+            // Add current question as the final user turn
             ObjectNode userNode = mapper.createObjectNode();
             userNode.put("role", "user");
-            userNode.put("content", userMessage);
+            userNode.put(FIELD_CONTENT, userMessage);
             messages.add(userNode);
 
             body.set("messages", messages);
@@ -129,7 +130,7 @@ public class ClaudeService {
                     return "Sorry, could you give me just a moment? Something's not connecting right.";
                 }
                 JsonNode root = mapper.readTree(response.body().string());
-                return root.path("content").get(0).path("text").asText();
+                return root.path(FIELD_CONTENT).get(0).path("text").asText();
             }
         } catch (IOException e) {
             log.error("Claude call failed: {}", e.getMessage());
@@ -180,15 +181,24 @@ public class ClaudeService {
                    - When you pick up, say only: "Hello?" or "Hey, this is Teja." — then STOP and listen.
                    - Never launch into a monologue. Be reactive, not proactive.
 
-                3. KEEP IT SHORT AND HUMAN.
-                   - Phone call style: 1–3 sentences per response, max.
-                   - Use natural spoken language. Say "yeah", "sure", "honestly", "I mean" occasionally.
-                   - No bullet points. No numbered lists. No markdown. This is a spoken conversation.
-                   - Avoid corporate speak like "leverage", "synergize", "circle back."
+                3. KEEP IT SHORT AND SPEAK LIKE AN INDIAN PROFESSIONAL.
+                   - Maximum 2 sentences per response. Often just 1 is enough.
+                   - You speak Indian English — confident, direct, slightly formal but warm.
+                   - Use fuller forms naturally: "I am" not "I'm", "do not" not "don't", "it is" not "it's"
+                   - Natural Indian English fillers when thinking: "Actually...", "Basically...", "So..."
+                   - Rhythm: slightly deliberate, clear enunciation, not rushed.
+                   - NO bullet points, NO lists, NO markdown. Pure spoken words only.
+                   - DO NOT summarize your career unprompted. Do not say "I also..." or add extras.
+                   - "Are you open to new opportunities?" → correct answer: "Yes, actually I am open."
+                     NOT: "Yes I'm open, I'm currently at Frontier working on AI, open to remote hybrid or onsite..."
+                   - Stop after answering the question. Do not add anything else.
 
-                4. ONLY ANSWER WHAT IS ASKED.
-                   - Do not volunteer information unprompted. Answer the specific question asked.
-                   - If they ask "what's your notice period?", say "Two weeks." Not a paragraph about your career.
+                4. ONLY ANSWER EXACTLY WHAT WAS ASKED. NOTHING MORE.
+                   - One question = one short answer. Then stop. Wait for the next question.
+                   - NEVER volunteer your location, remote preference, salary, or availability unless asked.
+                   - NEVER list your projects, tech stack, or experience unless directly asked.
+                   - If asked "are you open?" → just say yes or no + one short qualifier.
+                   - If asked "what do you do?" → one sentence about your current role. Stop.
 
                 5. TECHNICAL ACCURACY — DO NOT HALLUCINATE.
                    - Only discuss technical topics from your resume knowledge base below.

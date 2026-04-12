@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 @Component
@@ -33,18 +34,25 @@ public class AudioStreamHandler extends TextWebSocketHandler {
     private final RecordingService recordingService;
     private final ObjectMapper mapper = new ObjectMapper();
 
-    // Map Twilio Session ID -> Deepgram WebSocket
-    private final Map<String, okhttp3.WebSocket> activeStreams = new ConcurrentHashMap<>();
-    // Store Twilio StreamSids so we can send audio back
-    private final Map<String, String> streamSids = new ConcurrentHashMap<>();
-    // Per-call conversation history for multi-turn context
+    private final Map<String, okhttp3.WebSocket> activeStreams       = new ConcurrentHashMap<>();
+    private final Map<String, String>             streamSids         = new ConcurrentHashMap<>();
     private final Map<String, List<SimulateRequest.ConversationMessage>> callHistories = new ConcurrentHashMap<>();
-    // Per-call raw audio accumulation for recording
-    private final Map<String, List<byte[]>> callAudioChunks = new ConcurrentHashMap<>();
-    // Per-call caller phone number
-    private final Map<String, String> callerNumbers = new ConcurrentHashMap<>();
-    // Track if we are currently generating a response (prevents overlapping responses)
-    private final Map<String, AtomicBoolean> respondingFlags = new ConcurrentHashMap<>();
+    private final Map<String, List<byte[]>>       callAudioChunks    = new ConcurrentHashMap<>();
+    private final Map<String, String>             callerNumbers      = new ConcurrentHashMap<>();
+
+    /**
+     * TRUE  = AI is currently speaking (generating + sending audio).
+     * Any new transcript received while this is true means the caller
+     * interrupted — we cancel the current response immediately and handle
+     * the new utterance instead.
+     */
+    private final Map<String, AtomicBoolean>      speakingFlags      = new ConcurrentHashMap<>();
+
+    /**
+     * Holds the latest pending transcript when an interruption happens.
+     * The speaking thread checks this after each sentence chunk and stops early.
+     */
+    private final Map<String, AtomicReference<String>> pendingInterrupt = new ConcurrentHashMap<>();
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -52,11 +60,11 @@ public class AudioStreamHandler extends TextWebSocketHandler {
 
         callHistories.put(session.getId(), new ArrayList<>());
         callAudioChunks.put(session.getId(), new ArrayList<>());
-        respondingFlags.put(session.getId(), new AtomicBoolean(false));
+        speakingFlags.put(session.getId(), new AtomicBoolean(false));
+        pendingInterrupt.put(session.getId(), new AtomicReference<>(null));
 
-        // Open Deepgram STT stream — only fire on final transcript
         okhttp3.WebSocket dgWs = deepgramService.openStream(transcript -> {
-            log.info("Caller said: [{}]", transcript);
+            log.info("🎙 Caller: [{}]", transcript);
             handleCallerSpeech(session, transcript);
         });
 
@@ -72,119 +80,159 @@ public class AudioStreamHandler extends TextWebSocketHandler {
             String streamSid = root.path("start").path("streamSid").asText();
             streamSids.put(session.getId(), streamSid);
 
-            // Extract caller phone from customParameters if present
             JsonNode customParams = root.path("start").path("customParameters");
             String callerNum = customParams.path("from").asText("");
             if (!callerNum.isBlank()) {
                 callerNumbers.put(session.getId(), callerNum);
             }
-
             log.info("▶ Stream started: {} caller={}", streamSid, callerNum);
-            // DO NOT send any greeting — wait for caller to speak first
 
         } else if ("media".equals(event)) {
             String base64Audio = root.path("media").path("payload").asText();
             byte[] rawAudio = Base64.getDecoder().decode(base64Audio);
 
-            // Accumulate audio for recording
             List<byte[]> chunks = callAudioChunks.get(session.getId());
-            if (chunks != null) {
-                chunks.add(rawAudio);
-            }
+            if (chunks != null) chunks.add(rawAudio);
 
-            // Forward to Deepgram for STT
             okhttp3.WebSocket dgWs = activeStreams.get(session.getId());
-            if (dgWs != null) {
-                deepgramService.sendAudio(dgWs, rawAudio);
-            }
+            if (dgWs != null) deepgramService.sendAudio(dgWs, rawAudio);
 
         } else if ("stop".equals(event)) {
-            log.info("⏹ Stream stop received for session {}", session.getId());
+            log.info("⏹ Stream stop: {}", session.getId());
         }
     }
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
-        log.info("🛑 Twilio WS Closed: {} status={}", session.getId(), status);
+        log.info("🛑 Closed: {} status={}", session.getId(), status);
+
         okhttp3.WebSocket dgWs = activeStreams.remove(session.getId());
         String streamSid = streamSids.remove(session.getId());
-
-        // Finalize recording: save audio + transcript
         List<byte[]> chunks = callAudioChunks.remove(session.getId());
         List<SimulateRequest.ConversationMessage> history = callHistories.remove(session.getId());
         String caller = callerNumbers.remove(session.getId());
-        respondingFlags.remove(session.getId());
+        speakingFlags.remove(session.getId());
+        pendingInterrupt.remove(session.getId());
 
         if (chunks != null && !chunks.isEmpty() && history != null) {
-            recordingService.saveCallRecording(streamSid != null ? streamSid : session.getId(), caller, chunks, history);
+            recordingService.saveCallRecording(
+                streamSid != null ? streamSid : session.getId(), caller, chunks, history);
         }
-
-        if (dgWs != null) {
-            deepgramService.closeStream(dgWs);
-        }
+        if (dgWs != null) deepgramService.closeStream(dgWs);
     }
+
+    // ─── Core speech handler ─────────────────────────────────────────────────
 
     private void handleCallerSpeech(WebSocketSession session, String text) {
         if (text == null || text.isBlank()) return;
 
-        AtomicBoolean responding = respondingFlags.get(session.getId());
-        if (responding == null || !responding.compareAndSet(false, true)) {
-            log.debug("Skipping transcript — already responding");
+        AtomicBoolean speaking = speakingFlags.get(session.getId());
+        AtomicReference<String> interrupt = pendingInterrupt.get(session.getId());
+
+        if (speaking != null && speaking.get()) {
+            // AI is mid-speech — store interruption, speaking thread will see it and stop
+            if (interrupt != null) {
+                interrupt.set(text);
+                log.info("⚡ Interrupt queued: [{}]", text);
+            }
             return;
         }
 
+        // No ongoing speech — handle immediately
+        processUtterance(session, text);
+    }
+
+    private void processUtterance(WebSocketSession session, String text) {
+        AtomicBoolean speaking = speakingFlags.get(session.getId());
+        if (speaking == null || !speaking.compareAndSet(false, true)) return;
+
         List<SimulateRequest.ConversationMessage> history = callHistories.get(session.getId());
 
-        // Run AI generation async so we don't block the WebSocket receiving thread
         Thread.ofVirtual().start(() -> {
             try {
-                // Add caller utterance to history
-                if (history != null) {
-                    synchronized (history) {
-                        history.add(new SimulateRequest.ConversationMessage("user", text));
-                    }
+                // Build history snapshot WITHOUT the current message
+                // (ClaudeService adds the current message itself)
+                List<SimulateRequest.ConversationMessage> historySnapshot;
+                synchronized (history) {
+                    historySnapshot = new ArrayList<>(history);
                 }
 
-                // Get response from Claude with full conversation history
-                List<SimulateRequest.ConversationMessage> historyCopy = history != null
-                        ? new ArrayList<>(history) : new ArrayList<>();
-                String aiReply = claudeService.respond(text, historyCopy);
-                log.info("AI reply: {}", aiReply);
+                // Get AI response
+                String aiReply = claudeService.respond(text, historySnapshot);
+                log.info("🤖 AI: [{}]", aiReply);
 
-                // Add AI response to history
-                if (history != null) {
-                    synchronized (history) {
-                        history.add(new SimulateRequest.ConversationMessage("assistant", aiReply));
-                    }
+                // Only commit to history if we weren't interrupted
+                AtomicReference<String> interrupt = pendingInterrupt.get(session.getId());
+                if (interrupt != null && interrupt.get() != null) {
+                    log.info("⚡ Response discarded — interrupted before audio sent");
+                    return;
                 }
 
-                // Synthesize and send back audio
-                sendBotSpeech(session, aiReply);
+                // Add both turns to history
+                synchronized (history) {
+                    history.add(new SimulateRequest.ConversationMessage("user", text));
+                    history.add(new SimulateRequest.ConversationMessage("assistant", aiReply));
+                }
+
+                // Send audio — checks for interrupt before each sentence
+                sendBotSpeechInterruptible(session, aiReply);
+
             } catch (Exception e) {
                 log.error("AI pipeline error: {}", e.getMessage(), e);
             } finally {
-                AtomicBoolean flag = respondingFlags.get(session.getId());
+                // Done speaking — check if an interrupt was queued while we were talking
+                AtomicBoolean flag = speakingFlags.get(session.getId());
                 if (flag != null) flag.set(false);
+
+                AtomicReference<String> interrupt = pendingInterrupt.get(session.getId());
+                if (interrupt != null) {
+                    String queued = interrupt.getAndSet(null);
+                    if (queued != null && !queued.isBlank()) {
+                        log.info("▶ Processing queued interrupt: [{}]", queued);
+                        processUtterance(session, queued);
+                    }
+                }
             }
         });
     }
 
-    private void sendBotSpeech(WebSocketSession session, String text) {
+    /**
+     * Sends audio sentence by sentence.
+     * Before each sentence, checks if an interrupt was received — if so, stops immediately.
+     * This is what makes the AI feel responsive when you talk over it.
+     */
+    private void sendBotSpeechInterruptible(WebSocketSession session, String fullText) {
+        // Split on sentence boundaries for interruptibility
+        String[] sentences = fullText.split("(?<=[.!?])\\s+");
+        if (sentences.length == 0) sentences = new String[]{fullText};
+
+        for (String sentence : sentences) {
+            sentence = sentence.trim();
+            if (sentence.isBlank()) continue;
+
+            // Check for interrupt before sending each sentence
+            AtomicReference<String> interrupt = pendingInterrupt.get(session.getId());
+            if (interrupt != null && interrupt.get() != null) {
+                log.info("⚡ Mid-speech interrupt detected — stopping after current sentence boundary");
+                break;
+            }
+
+            sendSentenceAudio(session, sentence);
+        }
+    }
+
+    private void sendSentenceAudio(WebSocketSession session, String text) {
         try {
             byte[] audioBytes = elevenLabsService.synthesize(text);
-            if (audioBytes == null || audioBytes.length == 0) {
-                log.warn("ElevenLabs returned empty audio for text: {}", text);
-                return;
-            }
+            if (audioBytes == null || audioBytes.length == 0) return;
 
             String streamSid = streamSids.get(session.getId());
-            if (streamSid == null) {
-                log.warn("No streamSid for session {}", session.getId());
-                return;
-            }
+            if (streamSid == null) return;
+
+            // Send a clear signal first so Twilio stops any buffered audio
+            sendClearSignal(session, streamSid);
 
             String base64Audio = Base64.getEncoder().encodeToString(audioBytes);
-
             String payload = mapper.writeValueAsString(Map.of(
                     "event", "media",
                     "streamSid", streamSid,
@@ -197,7 +245,28 @@ public class AudioStreamHandler extends TextWebSocketHandler {
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to send audio back to Twilio: {}", e.getMessage(), e);
+            log.error("Audio send error: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Sends Twilio's "clear" event to immediately stop any audio currently
+     * playing on the caller's end. This is what makes interruption audible —
+     * without this, the old audio keeps playing even after we stop sending.
+     */
+    private void sendClearSignal(WebSocketSession session, String streamSid) {
+        try {
+            String clearPayload = mapper.writeValueAsString(Map.of(
+                    "event", "clear",
+                    "streamSid", streamSid
+            ));
+            synchronized (session) {
+                if (session.isOpen()) {
+                    session.sendMessage(new TextMessage(clearPayload));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not send clear signal: {}", e.getMessage());
         }
     }
 }
