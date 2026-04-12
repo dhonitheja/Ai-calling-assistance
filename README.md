@@ -1,49 +1,33 @@
 # 🎙️ AI Call Screener & Interview Simulator
 
-> **Elevate your job search with a production-grade AI agent that intercepts recruiter calls, answers questions using your live resume context, and trains on your past experiences.**
-
-![Command Center](https://callscreen-frontend-166891801449.us-central1.run.app/command-center-preview.png) *(Note: Replace with actual screenshot path if available)*
+**AI Call Screener** is a production-grade AI agent designed to intercept recruiter calls and answer questions on your behalf. By leveraging advanced LLMs and real-time audio processing, it acts as a digital proxy that understands your professional background and handles phone screenings autonomously.
 
 ---
 
-## 🚀 Live Production Instance
-- **Frontend Dashboard**: [https://callscreen-frontend-166891801449.us-central1.run.app](https://callscreen-frontend-166891801449.us-central1.run.app)
-- **Voice AI Webhook**: `https://callscreen-backend-166891801449.us-central1.run.app/api/calls/incoming`
-- **Phone Number**: `+1 (855) 769-2480` (Toll-Free AI Agent)
+## 🏗️ Architecture
 
----
-
-## 🏗️ System Architecture
-
-The project is built on a high-concurrency, low-latency AI pipeline:
+The system utilizes a high-concurrency, low-latency AI pipeline to ensure natural-sounding conversations:
 
 ```mermaid
 graph TD
-    A["Recruiter Call"] -->|TwiML| B["Twilio Voice"]
+    A["Incoming Call"] -->|TwiML| B["Twilio Voice"]
     B -->|WebSocket Stream| C["Spring Boot Backend"]
     C -->|STT| D["Deepgram Nova-2"]
-    D -->|Text Context| E["Claude 3.5 Sonnet Brain"]
-    E -->|RAG Retrieval| F["Pinecone Vector DB"]
-    E -->|Response Text| G["ElevenLabs Turbo v2.5"]
+    D -->|Text Context| E["LLM Brain (Claude)"]
+    E -->|RAG Retrieval| F["Vector Database"]
+    E -->|Response Text| G["TTS (ElevenLabs)"]
     G -->|PCM Audio| B
-    B -->|Voice| H["Recruiter Hears 'You'"]
+    B -->|Digital Voice| H["Caller Experience"]
 ```
 
 ---
 
 ## ✨ Key Features
 
-### 🕹️ Command Center
-A high-tech dashboard for monitoring live call interceptions, tracking latency spikes, and managing system status (Emergency Stop / Cluster Start).
-
-### 🧪 AI Training Studio (RAG)
-Build your "AI DNA". Upload your resume and use the Training Studio to:
-- Refine 25+ pre-built interview questions.
-- Use **Claude 3.5 Sonnet** to "AI Improve" your answers for natural phone conversation.
-- **⚡ Deploy to Live AI**: Instantly update the RAG context in Cloud Run without redeploying code.
-
-### 🎭 Interview Mode
-Practice your own interview skills against a high-fidelity AI simulator that mimics real recruiter behavior and provides instant feedback on your tone and content.
+- **Command Center**: Real-time dashboard for monitoring call interceptions, latency tracking, and system health.
+- **AI Training Studio (RAG)**: A dedicated environment to build your "AI DNA". Upload your experience data and refine AI responses for 25+ common interview scenarios.
+- **Interview Mode**: A high-fidelity simulator for practicing interviews against an AI that mimics real recruiter behavior.
+- **Toll-Free Integration**: Automated Twilio webhook handling for seamless call routing.
 
 ---
 
@@ -51,43 +35,46 @@ Practice your own interview skills against a high-fidelity AI simulator that mim
 
 | Layer | Technology |
 |-------|------------|
-| **Frontend** | Next.js 14 (App Router), React, Framer Motion, Lucide Icons |
+| **Frontend** | Next.js 14 (App Router), React, Framer Motion, CSS Modules |
 | **Backend** | Spring Boot 3.2, Java 21, Project Loom (Virtual Threads) |
-| **STT** | Deepgram Nova-2 (WebSocket Real-time) |
-| **LLM** | Anthropic Claude 3.5 Sonnet |
-| **TTS** | ElevenLabs Flash v2.5 (Lower than 200ms TTFB) |
-| **Vector DB** | Pinecone (Serverless) |
-| **Cloud** | Google Cloud Run, Cloud Build, Artifact Registry |
+| **Speech-to-Text** | Deepgram Nova-2 (WebSocket Real-time) |
+| **LLM** | Anthropic Claude 3.5 Sonnet / GPT-4o |
+| **Text-to-Speech** | ElevenLabs Turbo v2.5 |
+| **Vector DB** | Pinecone |
 
 ---
 
-## ⚙️ Development Setup
+## ⚙️ Setup & Installation
 
 ### 1. Prerequisites
 - Java 21 (JDK)
 - Node.js 20+
-- Google Cloud SDK (`gcloud`)
+- Twilio Account (for phone number and webhooks)
+- API Keys for Deepgram, Anthropic, ElevenLabs, and Pinecone
 
-### 2. Local Configuration
-Create a `.env.local` in `voice-ai-agent` and an `application.yml` override in `backend`.
+### 2. Environment Configuration
 
+**Frontend (`voice-ai-agent/.env.local`):**
 ```env
-# Frontend Envs
 NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
-ANTHROPIC_API_KEY=your_key
-DEEPGRAM_API_KEY=your_key
-ELEVENLABS_API_KEY=your_key
-PINECONE_API_KEY=your_key
+ANTHROPIC_API_KEY=your_anthropic_key
+DEEPGRAM_API_KEY=your_deepgram_key
+ELEVENLABS_API_KEY=your_elevenlabs_key
+PINECONE_API_KEY=your_pinecone_key
 ```
 
-### 3. Run Locally
-**Backend**:
+**Backend (`backend/src/main/resources/application.yml`):**
+Configure your Twilio credentials and service endpoints in the YAML configuration.
+
+### 3. Running Locally
+
+**Start the Backend:**
 ```bash
 cd backend
 ./mvnw spring-boot:run
 ```
 
-**Frontend**:
+**Start the Frontend:**
 ```bash
 cd voice-ai-agent
 npm install
@@ -96,27 +83,17 @@ npm run dev
 
 ---
 
-## 🚢 Production Deployment
+## 🚢 Deployment
 
-The project is optimized for **Google Cloud Run**.
+The application is container-ready and can be deployed to any major cloud provider (GCP Cloud Run, AWS App Runner, etc.).
 
-**Deploy Backend**:
-```bash
-gcloud run deploy callscreen-backend --source . --region us-central1 --allow-unauthenticated
-```
-
-**Deploy Frontend**:
-```bash
-gcloud run deploy callscreen-frontend --source . --region us-central1 --allow-unauthenticated
-```
-
----
-
-## 📞 Twilio Webhook Setup
-Point your Twilio number's "A Call Comes In" webhook to:
-`https://[YOUR_BACKEND_URL]/api/calls/incoming` (HTTP POST)
+**Basic Deployment Steps:**
+1. Build the Docker images for both frontend and backend.
+2. Push to a Container Registry.
+3. Deploy as a serverless service or to a Kubernetes cluster.
+4. Set the Twilio voice webhook to your deployed backend URL: `https://your-api-domain.com/api/calls/incoming`.
 
 ---
 
 ## 📝 License
-MIT © 2026 Sai Teja Ragula
+Distributed under the MIT License.
