@@ -143,8 +143,15 @@ public class TwilioWebhookController {
 
     /**
      * Ring your real phone.
-     * <Dial action> = fires /handoff when YOUR leg ends (you hang up → AI takes over).
-     * <Number url>  = fires per-digit on your leg; pressing * fires /handoff immediately.
+     *
+     * HOW * DETECTION WORKS:
+     * Twilio's <Dial> has a built-in attribute: finishOnKey="*"
+     * When you press * on your keypad, Twilio ends YOUR leg of the <Dial>
+     * and fires the action= URL with DialCallStatus=completed.
+     * The recruiter stays on the line — we then return AI stream TwiML from /handoff.
+     *
+     * The action= also fires naturally when you just hang up,
+     * so both "press *" and "hang up" cleanly hand off to AI.
      */
     private String buildDialWithHandoffTwiML(String callSid, String from) {
         if (realPhone == null || realPhone.isBlank()) {
@@ -154,11 +161,11 @@ public class TwilioWebhookController {
         return """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <Response>
-                    <Dial action="%s" method="POST" timeout="25">
-                        <Number url="%s" method="POST">%s</Number>
+                    <Dial action="%s" method="POST" timeout="25" finishOnKey="*">
+                        <Number>%s</Number>
                     </Dial>
                 </Response>
-                """.formatted(handoffUrl, handoffUrl, realPhone);
+                """.formatted(handoffUrl, realPhone);
     }
 
     /**
@@ -170,12 +177,11 @@ public class TwilioWebhookController {
         return """
                 <?xml version="1.0" encoding="UTF-8"?>
                 <Response>
-                    <Say voice="alice">Connecting you now.</Say>
-                    <Dial action="%s" method="POST" timeout="20">
-                        <Number url="%s" method="POST">%s</Number>
+                    <Dial action="%s" method="POST" timeout="20" finishOnKey="*">
+                        <Number>%s</Number>
                     </Dial>
                 </Response>
-                """.formatted(handoffUrl, handoffUrl, realPhone);
+                """.formatted(handoffUrl, realPhone);
     }
 
     /**
