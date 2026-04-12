@@ -805,11 +805,182 @@ function ArchitectureTab() {
   )
 }
 
+// ── Call History Tab ──────────────────────────────────────────
+function CallHistoryTab() {
+  const [calls, setCalls] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [selected, setSelected] = useState(null)
+  const [detail, setDetail] = useState(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/calls/history')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => { setCalls(data); setLoading(false) })
+      .catch(() => setLoading(false))
+  }, [])
+
+  const openCall = async (call) => {
+    if (selected === call.id) { setSelected(null); setDetail(null); return }
+    setSelected(call.id)
+    setDetailLoading(true)
+    try {
+      const res = await fetch(`/api/calls/history/${call.id}`)
+      if (res.ok) setDetail(await res.json())
+    } catch { /* offline */ }
+    setDetailLoading(false)
+  }
+
+  if (loading) return (
+    <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>Loading call history...</div>
+  )
+
+  if (calls.length === 0) return (
+    <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>
+      No calls recorded yet. Calls will appear here after your first AI session.
+    </div>
+  )
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+        <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{calls.length} call{calls.length !== 1 ? 's' : ''} recorded</p>
+      </div>
+
+      {calls.map(call => (
+        <div key={call.id} className="card" style={{ cursor: 'pointer', transition: 'border-color 0.15s' }}
+          onClick={() => openCall(call)}>
+
+          {/* Call row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontFamily: 'monospace', color: 'var(--cyan)', fontWeight: 700, fontSize: 14 }}>
+                  {call.caller || 'Unknown'}
+                </span>
+                <span style={{
+                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
+                  background: call.hasSummary ? 'rgba(0,255,170,0.12)' : 'rgba(255,255,255,0.06)',
+                  color: call.hasSummary ? 'var(--cyan)' : 'var(--text-muted)',
+                  border: `1px solid ${call.hasSummary ? 'rgba(0,255,170,0.25)' : 'var(--border)'}`,
+                }}>
+                  {call.hasSummary ? 'SUMMARIZED' : 'NO SUMMARY'}
+                </span>
+                {call.hasAudio && (
+                  <span style={{
+                    fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
+                    background: 'rgba(100,150,255,0.12)', color: '#7da9ff',
+                    border: '1px solid rgba(100,150,255,0.25)',
+                  }}>AUDIO</span>
+                )}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                {call.timestamp ? (() => {
+                  // Format: "2024-01-15_14-32-00" → "Jan 15, 2024  14:32"
+                  const m = call.timestamp.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})/)
+                  if (m) {
+                    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+                    return `${months[parseInt(m[2])-1]} ${parseInt(m[3])}, ${m[1]}  ${m[4]}:${m[5]}`
+                  }
+                  return call.timestamp
+                })() : call.id}
+                {' · '}{call.turns} turn{call.turns !== 1 ? 's' : ''}
+              </div>
+            </div>
+            <div style={{ fontSize: 18, color: 'var(--text-muted)', flexShrink: 0 }}>
+              {selected === call.id ? '▲' : '▼'}
+            </div>
+          </div>
+
+          {/* Summary preview (collapsed) */}
+          {selected !== call.id && call.hasSummary && (
+            <p style={{ marginTop: 8, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5,
+              overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+              {call.summary}
+            </p>
+          )}
+
+          {/* Expanded detail */}
+          {selected === call.id && (
+            <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
+              {detailLoading ? (
+                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading...</div>
+              ) : detail ? (
+                <>
+                  {/* Summary */}
+                  {detail.hasSummary && (
+                    <div style={{ marginBottom: 16 }}>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+                        textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>AI Summary</p>
+                      <pre style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7,
+                        whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
+                        {detail.summary}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Transcript */}
+                  {detail.transcript && detail.transcript.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
+                        textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Full Transcript</p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        {detail.transcript.map((turn, i) => (
+                          <div key={i} style={{
+                            display: 'flex', gap: 10, alignItems: 'flex-start',
+                            flexDirection: turn.role === 'assistant' ? 'row-reverse' : 'row'
+                          }}>
+                            <div style={{
+                              fontSize: 10, fontWeight: 700, flexShrink: 0, padding: '3px 7px',
+                              borderRadius: 4, marginTop: 2,
+                              background: turn.role === 'assistant' ? 'rgba(0,255,170,0.12)' : 'rgba(255,255,255,0.06)',
+                              color: turn.role === 'assistant' ? 'var(--cyan)' : 'var(--text-muted)',
+                            }}>
+                              {turn.role === 'assistant' ? 'AI' : 'CALLER'}
+                            </div>
+                            <div style={{
+                              fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.55,
+                              background: 'rgba(255,255,255,0.03)', borderRadius: 6,
+                              padding: '6px 10px', flex: 1,
+                              borderLeft: turn.role === 'user' ? '2px solid var(--border)' : 'none',
+                              borderRight: turn.role === 'assistant' ? '2px solid rgba(0,255,170,0.3)' : 'none',
+                            }}>
+                              {turn.content}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Audio download */}
+                  {detail.hasAudio && (
+                    <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+                      <a href={`/api/calls/audio/${detail.id}`}
+                        style={{ fontSize: 12, color: '#7da9ff', textDecoration: 'none' }}
+                        onClick={e => e.stopPropagation()}>
+                        Download audio.wav
+                      </a>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Could not load detail.</div>
+              )}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── App Shell ──────────────────────────────────────────────────
 const TABS = [
   { id: 'command',       icon: '⚡', label: 'Command' },
   { id: 'simulate',      icon: '💬', label: 'Simulate' },
   { id: 'knowledge',     icon: '📚', label: 'Knowledge Base' },
+  { id: 'history',       icon: '📞', label: 'Call History' },
   { id: 'architecture',  icon: '🏗️', label: 'Architecture' },
 ]
 
@@ -852,6 +1023,7 @@ export default function App() {
         {activeTab === 'command'      && <div className="tab-panel"><CommandTab /></div>}
         {activeTab === 'simulate'     && <div className="tab-panel"><SimulateTab /></div>}
         {activeTab === 'knowledge'    && <div className="tab-panel"><KnowledgeBaseTab /></div>}
+        {activeTab === 'history'      && <div className="tab-panel"><CallHistoryTab /></div>}
         {activeTab === 'architecture' && <div className="tab-panel"><ArchitectureTab /></div>}
       </main>
     </div>

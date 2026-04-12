@@ -35,6 +35,7 @@ public class RecordingService {
     private String recordingsDir;
 
     private final SelfTrainingService selfTrainingService;
+    private final CallSummaryService callSummaryService;
     private final ObjectMapper mapper = new ObjectMapper();
     private static final DateTimeFormatter DIR_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd_HH-mm-ss");
 
@@ -72,6 +73,9 @@ public class RecordingService {
 
             // Trigger self-training: ingest Q/A pairs into Pinecone RAG
             selfTrainingService.ingestCallTranscript(callId, caller, history);
+
+            // Generate AI summary of the call
+            callSummaryService.generateAndSave(callId, caller, ts, history, "AI Agent");
 
         } catch (Exception e) {
             log.error("Failed to save call recording: {}", e.getMessage(), e);
