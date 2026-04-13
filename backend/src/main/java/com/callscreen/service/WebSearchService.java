@@ -4,9 +4,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
+import okhttp3.ResponseBody;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -41,13 +44,17 @@ public class WebSearchService {
         }
 
         try {
-            String encodedQuery = java.net.URLEncoder.encode(query, "UTF-8");
+            // BUG FIX: Use StandardCharsets overload — the String charset form is deprecated
+            // and throws checked UnsupportedEncodingException unnecessarily.
+            String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
             String url = "https://api.search.brave.com/res/v1/web/search?q=" + encodedQuery + "&count=3&text_decorations=false";
 
             Request request = new Request.Builder()
                     .url(url)
                     .addHeader("Accept", "application/json")
-                    .addHeader("Accept-Encoding", "gzip")
+                    // BUG FIX: Remove Accept-Encoding: gzip — OkHttp adds it automatically
+                    // and handles decompression. Manually setting it means you get raw gzip
+                    // bytes back that you then try to parse as JSON (causes JsonParseException).
                     .addHeader("X-Subscription-Token", braveApiKey)
                     .build();
 
@@ -57,7 +64,10 @@ public class WebSearchService {
                     return null;
                 }
 
-                String body = response.body().string();
+                // BUG FIX: response.body() can be null; must guard before calling .string()
+                ResponseBody responseBody = response.body();
+                if (responseBody == null) return null;
+                String body = responseBody.string();
                 JsonNode root = mapper.readTree(body);
                 JsonNode results = root.path("web").path("results");
 

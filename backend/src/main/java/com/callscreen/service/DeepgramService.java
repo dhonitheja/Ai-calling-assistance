@@ -23,7 +23,7 @@ public class DeepgramService {
     @Value("${deepgram.api-key:}")
     private String apiKey;
 
-    @Value("${deepgram.model:nova-2}")
+    @Value("${deepgram.model:nova-3}")
     private String model;
 
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
@@ -44,7 +44,12 @@ public class DeepgramService {
         }
 
         String url = String.format(
-                "wss://api.deepgram.com/v1/listen?model=%s&encoding=mulaw&sample_rate=8000&channels=1&punctuate=true&interim_results=false",
+                // smart_format: capitalises, adds punctuation, formats numbers naturally
+                // utterance_end_ms: fires final transcript after 1000ms of silence (good for phone pauses)
+                // endpointing: 300ms silence threshold to detect end of utterance quickly
+                "wss://api.deepgram.com/v1/listen?model=%s&encoding=mulaw&sample_rate=8000" +
+                "&channels=1&punctuate=true&smart_format=true&interim_results=false" +
+                "&utterance_end_ms=1000&endpointing=300",
                 model
         );
 

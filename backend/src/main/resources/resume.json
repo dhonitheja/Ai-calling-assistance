@@ -7,49 +7,56 @@
   "linkedinUrl": "linkedin.com/in/sairagula",
   "githubUrl": "github.com/dhonitheja",
   "openToRelocation": true,
-  "remotePreference": "Open to Remote/Hybrid/Onsite",
+  "remotePreference": "Open to Remote, Hybrid, or Onsite",
   "noticePeriod": "2 weeks",
-  "expectedSalary": "Open to discussion based on role and total compensation",
-  "workAuthorization": "Available upon request",
-  "availability": "Available for interviews immediately",
-  "summary": "AI Engineer with 5+ years of software development experience and hands-on expertise building production AI applications with Large Language Models (LLMs). Skilled in LLM integration, multi-model orchestration, and prompt engineering using Gemini, Claude, and Vertex AI. Experienced developing AI-powered features for enterprise applications including intelligent automation, NLP-based systems, and agentic workflows. Strong full stack foundation with Java/Spring Boot backend and React/TypeScript frontend. Proficient in deploying AI systems on cloud platforms (GCP, AWS) with focus on scalability and reliability. IBM Certified in Prompt Engineering with Oracle AI Foundations certification.",
+  "expectedSalary": "65 to 70 dollars per hour on W2 or C2C",
+  "workAuthorization": "STEM OPT — valid through June 30, 2027. No sponsorship needed.",
+  "visaStatus": "STEM OPT valid through June 30, 2027. No H1-B sponsorship required.",
+  "availability": "Available for interviews immediately. Can start in 2 weeks.",
+  "yearsOfExperience": "5+ years total software development. 3+ years hands-on AI/LLM production work.",
+
+  "summary": "AI Engineer with 5 plus years of software development experience and deep hands-on expertise building production AI applications using Large Language Models. Currently at Frontier Communications in Dallas building LLM-powered features on Google Cloud Platform with Vertex AI and Gemini. Skilled in multi-model orchestration, RAG pipelines, agentic workflows, and prompt engineering. Strong full stack background with Java Spring Boot backend and React TypeScript frontend. Experienced deploying AI systems on GCP and AWS with Kubernetes and Docker. IBM certified in Prompt Engineering. Oracle AI Foundations certified. AWS Solutions Architect certified.",
+
   "skills": {
     "aiAndLLMs": [
-      "LLM Integration",
-      "Multi-Model Orchestration",
-      "Prompt Engineering",
-      "RAG",
-      "Agentic Workflows",
-      "AI Agents"
+      "LLM Integration (Gemini 1.5, Claude, GPT-4)",
+      "Multi-Model Orchestration — routing queries to the right model by complexity",
+      "Prompt Engineering — chain-of-thought, few-shot, system prompts, output formatting",
+      "RAG (Retrieval-Augmented Generation) — Pinecone, embeddings, semantic search",
+      "Agentic Workflows — tool use, function calling, autonomous task pipelines",
+      "AI Agents — multi-step reasoning, memory, planning"
     ],
     "aiPlatforms": [
       "Google Vertex AI",
-      "Gemini 1.5",
-      "Claude (Anthropic)",
-      "OpenAI API",
+      "Gemini 1.5 Flash and Pro",
+      "Claude (claude-sonnet-4-6, claude-3-5-sonnet)",
+      "OpenAI API (GPT-4, embeddings)",
       "LangChain",
-      "Vector Databases"
+      "Pinecone Vector Database",
+      "Deepgram (real-time STT)",
+      "ElevenLabs (TTS voice synthesis)"
     ],
     "languages": [
-      "Python",
-      "Java 8/11/17",
+      "Java 8, 11, 17, 21",
+      "Python 3.x",
       "TypeScript",
-      "JavaScript (ES6+)",
+      "JavaScript ES6+",
       "SQL",
       "Bash"
     ],
     "backend": [
-      "Spring Boot",
+      "Spring Boot 3.x",
       "FastAPI",
       "Node.js",
-      "RESTful APIs",
-      "Microservices",
-      "Apache Kafka",
-      "Redis"
+      "RESTful API design",
+      "Microservices architecture",
+      "Apache Kafka (event-driven pipelines)",
+      "Redis (caching, pub/sub)",
+      "WebSocket (real-time streaming)"
     ],
     "frontend": [
       "React.js",
-      "Next.js",
+      "Next.js 14 (App Router)",
       "TypeScript",
       "Redux",
       "Tailwind CSS",
@@ -57,47 +64,49 @@
       "CSS3"
     ],
     "cloudAndMLOps": [
-      "GCP (Vertex AI, Cloud Storage)",
-      "AWS (EC2, Lambda, S3)",
+      "GCP — Vertex AI, Cloud Run, Cloud Storage, BigQuery",
+      "AWS — EC2, Lambda, S3, RDS",
       "Docker",
       "Kubernetes",
-      "CI/CD"
+      "CI/CD — GitHub Actions, Jenkins",
+      "Terraform (basic)"
     ],
     "databases": [
       "PostgreSQL",
       "MongoDB",
       "Redis",
       "Elasticsearch",
-      "Vector Stores",
-      "Pinecone"
+      "Pinecone (vector store)",
+      "BigQuery"
     ],
     "tools": [
-      "Git",
-      "GitHub",
-      "JIRA",
+      "Git, GitHub",
+      "JIRA, Confluence",
       "Agile/Scrum",
-      "JUnit",
-      "Jest",
-      "API Testing",
-      "Code Reviews"
+      "JUnit, Mockito",
+      "Jest, React Testing Library",
+      "Postman, Swagger"
     ]
   },
+
   "experience": [
     {
       "company": "Frontier Communications",
       "title": "AI/Software Engineer",
       "duration": "January 2023 – Present",
       "location": "Dallas, TX",
+      "description": "Frontier is a major US telecom provider. I work on their enterprise AI team building LLM-powered features on GCP.",
       "highlights": [
-        "Integrate LLM capabilities into enterprise applications using Vertex AI and Google Cloud Platform",
-        "Develop AI-powered features including NLP-based SMS integration and intelligent automation workflows",
-        "Build multi-model orchestration systems to route requests to appropriate AI models based on task complexity",
-        "Implement prompt engineering techniques to optimize LLM responses for customer-facing applications",
-        "Design RESTful APIs connecting AI services to frontend applications",
-        "Build full stack features using Java/Spring Boot backend and React/TypeScript frontend",
-        "Deploy AI-integrated applications on GCP using Docker and Kubernetes",
-        "Implement event-driven architecture using Apache Kafka for real-time AI processing pipelines",
-        "Achieve 90%+ code coverage through comprehensive testing of AI integrations"
+        "Integrated Vertex AI and Gemini 1.5 into enterprise telecom applications to automate customer-facing workflows that previously required human agents",
+        "Built a multi-model orchestration layer that routes incoming requests to Gemini Flash for simple queries and Gemini Pro for complex reasoning — reduced average response latency by 40 percent while cutting cost",
+        "Implemented NLP-based SMS integration using LLM classification to automatically categorize and respond to customer text messages at scale",
+        "Designed and built RAG pipelines — chunked internal documentation, embedded with OpenAI text-embedding-3-small, stored in Pinecone, and wired to Gemini for context-aware answers",
+        "Engineered production prompt templates with chain-of-thought reasoning, few-shot examples, and output format constraints for consistent, reliable LLM outputs",
+        "Built agentic workflows using function calling where the AI can query internal APIs, look up account info, and take actions on behalf of customers",
+        "Developed full stack features with Java Spring Boot REST APIs and React TypeScript frontend — end to end ownership",
+        "Deployed AI-integrated microservices on GCP Cloud Run with Docker and Kubernetes, handling autoscaling under variable load",
+        "Built event-driven AI processing pipelines using Apache Kafka — real-time stream processing for customer interaction data",
+        "Achieved 90 percent plus code coverage through unit and integration testing of AI integration layers using JUnit and Mockito"
       ]
     },
     {
@@ -105,11 +114,12 @@
       "title": "Software Engineer",
       "duration": "January 2022 – July 2022",
       "location": "India",
+      "description": "Worked as a backend engineer at Wipro on enterprise Java applications.",
       "highlights": [
-        "Developed backend services using Java/Spring Boot for enterprise applications",
-        "Built RESTful APIs and microservices with focus on scalability",
-        "Implemented automation workflows using event-driven architecture",
-        "Deployed applications on cloud infrastructure using Docker and CI/CD pipelines"
+        "Developed backend microservices using Java Spring Boot for enterprise B2B applications",
+        "Built and documented RESTful APIs consumed by frontend teams and third-party integrators",
+        "Implemented automated data processing workflows using Apache Kafka event streaming",
+        "Migrated legacy monolith components to containerized microservices using Docker and deployed via CI/CD pipelines on cloud infrastructure"
       ]
     },
     {
@@ -117,72 +127,89 @@
       "title": "Software Engineer",
       "duration": "December 2020 – January 2022",
       "location": "India",
+      "description": "Full stack developer building client-facing web applications.",
       "highlights": [
-        "Built full stack applications using Java/Spring Boot and React/JavaScript",
-        "Developed event-driven systems using Apache Kafka for real-time processing",
-        "Implemented RESTful APIs for seamless frontend-backend integration",
-        "Deployed containerized applications on cloud platforms"
+        "Built full stack web applications using Java Spring Boot backend and React JavaScript frontend",
+        "Developed real-time data processing systems using Apache Kafka for event-driven architecture",
+        "Implemented RESTful APIs and handled frontend-backend integration across the complete feature lifecycle",
+        "Deployed containerized applications on cloud platforms and maintained CI/CD pipelines"
       ]
     }
   ],
+
   "projects": [
     {
-      "name": "Wealthix – AI-Powered Financial Intelligence Platform",
+      "name": "Wealthix — AI-Powered Financial Intelligence Platform",
       "url": "github.com/dhonitheja/AI-Powered-Financial-Intelligence-Platform",
-      "description": "AI-powered financial platform with multi-model orchestration using Gemini 1.5 and Claude. Implemented Hybrid Router pattern to dynamically select optimal LLM based on query complexity. Built RAG pipeline for context-aware responses using document embeddings. Deployed on AWS with monitoring and observability.",
-      "tech": [
-        "Next.js 14",
-        "Java 23",
-        "FastAPI",
-        "Gemini 1.5",
-        "Claude",
-        "Plaid",
-        "Stripe",
-        "PostgreSQL",
-        "AWS"
+      "description": "End-to-end AI financial platform. Built a Hybrid Router pattern that dynamically selects between Gemini 1.5 and Claude based on query type — fast financial lookups go to Gemini Flash, complex reasoning like tax optimization goes to Claude. Implemented a full RAG pipeline: PDF financial documents ingested, chunked, embedded with OpenAI embeddings, stored in Pinecone, retrieved by semantic similarity at query time. Deployed on AWS with load balancing and monitoring.",
+      "tech": ["Next.js 14", "Java 23", "FastAPI", "Gemini 1.5", "Claude", "Plaid API", "Stripe", "PostgreSQL", "Pinecone", "AWS EC2", "Docker"],
+      "highlights": [
+        "Multi-model orchestration: cost-optimized routing between Gemini Flash and Claude based on prompt complexity score",
+        "RAG pipeline end to end: ingest, chunk, embed, upsert, retrieve, inject into LLM context",
+        "Plaid integration for real bank account data — AI reasons over actual transaction history",
+        "Stripe payment integration with AI-generated invoice summaries"
       ]
     },
     {
-      "name": "AI Financial Co-Pilot – Automated Dispute Engine",
+      "name": "AI Financial Co-Pilot — Automated Dispute Engine",
       "url": "github.com/dhonitheja/AI-Financial-Co-Pilot-Automated-Dispute-Engine",
-      "description": "Agentic AI workflow for automated financial dispute resolution. Claude 3.5 integration for intelligent document analysis, prompt engineering pipelines for consistent AI outputs, real-time dashboard for dispute tracking.",
-      "tech": [
-        "Claude 3.5",
-        "Vertex AI",
-        "Next.js",
-        "TypeScript",
-        "PostgreSQL"
+      "description": "Agentic AI system for automated financial dispute resolution. The AI reads dispute documents using Claude 3.5, extracts key claims, cross-references transaction records, drafts resolution letters, and routes edge cases to human review. Built prompt engineering pipelines with structured output constraints so Claude always returns valid JSON that maps to dispute categories.",
+      "tech": ["Claude 3.5 Sonnet", "Vertex AI", "Next.js", "TypeScript", "PostgreSQL", "LangChain"],
+      "highlights": [
+        "Claude 3.5 for document analysis — structured output with JSON schema enforcement",
+        "Agentic routing: AI decides whether to auto-resolve or escalate to human",
+        "Prompt pipeline with few-shot examples for consistent dispute classification",
+        "Real-time dashboard showing dispute status, AI confidence scores, and resolution timeline"
       ]
     },
     {
-      "name": "AI Call Screener",
-      "description": "AI agent intercepting recruiter calls — Twilio phone layer, Deepgram real-time STT, Claude for reasoning from resume, ElevenLabs TTS voice synthesis. Spring Boot backend.",
-      "tech": [
-        "Spring Boot",
-        "Twilio",
-        "Deepgram",
-        "Claude API",
-        "ElevenLabs",
-        "Redis"
+      "name": "AI Call Screener — Voice AI Agent",
+      "description": "Real-time voice AI agent that intercepts recruiter phone calls and answers as me. Twilio Media Streams provides μ-law 8kHz audio via WebSocket. Deepgram nova-3 does streaming STT. Claude claude-sonnet-4-6 reasons from my resume context with RAG (Pinecone) for self-improvement after each call. ElevenLabs TTS generates the voice response. The system detects interruptions using AtomicReference and stops mid-sentence — exactly like a real person would. Conference bridge architecture enables seamless live call handoff between AI and human.",
+      "tech": ["Spring Boot 3", "Twilio Media Streams", "Deepgram nova-3", "Claude claude-sonnet-4-6", "ElevenLabs", "Pinecone RAG", "WebSocket", "Java Virtual Threads"],
+      "highlights": [
+        "Real-time audio pipeline: Twilio WebSocket → Deepgram STT → Claude reasoning → ElevenLabs TTS → Twilio",
+        "Interrupt detection: AtomicReference tracks mid-speech caller interruptions, AI stops at sentence boundary",
+        "Conference bridge: Twilio conference rooms allow seamless AI ↔ human call handoff with no audio gap",
+        "Self-training: each call transcript ingested into Pinecone RAG so AI improves over time",
+        "Java virtual threads for non-blocking AI pipeline — each call runs concurrently without blocking"
       ]
     }
   ],
+
   "education": [
     {
       "degree": "Master of Science in Computer Science",
       "school": "Governor's State University",
-      "location": "Chicago, IL"
+      "location": "Chicago, IL",
+      "graduated": "May 2024"
     },
     {
       "degree": "Bachelor of Technology in Computer Science",
       "school": "St. Peter's Engineering College (JNTU)",
-      "location": "Hyderabad, India"
+      "location": "Hyderabad, India",
+      "graduated": "2020"
     }
   ],
+
   "certifications": [
     "IBM Prompt Engineering for Everyone (2024)",
     "Oracle Cloud Infrastructure AI Foundations Associate (2024)",
-    "AWS Certified Solutions Architect – Associate (2025)",
+    "AWS Certified Solutions Architect — Associate (2025)",
     "Oracle Cloud Infrastructure Certified Foundations Associate (2024)"
-  ]
+  ],
+
+  "commonInterviewAnswers": {
+    "tellMeAboutYourself": "I am Sai Teja Ragula, an AI Engineer based in Dallas. I have 5 plus years of software development experience and for the past 3 years I have been focused specifically on building production LLM applications. I currently work at Frontier Communications where I integrate Vertex AI and Gemini into enterprise telecom workflows. My stack is Java Spring Boot on the backend, React TypeScript on the frontend, and GCP for cloud. I have built RAG pipelines, multi-model orchestration systems, and agentic AI workflows in production. I am currently looking for an AI or senior software engineering role where I can go deeper into applied LLM systems.",
+
+    "whyLeavingCurrentJob": "I have learned a lot at Frontier — shipping LLM features at enterprise scale has been great experience. I am now looking for a role that is even more AI-focused, ideally where AI is core to the product rather than a feature layer on top of an existing system.",
+
+    "biggestStrength": "I can take an AI concept from prototype to production end to end. I understand the LLM layer — prompting, RAG, orchestration — and I also understand the engineering underneath — APIs, distributed systems, cloud deployment. A lot of people are good at one or the other. I am comfortable across the full stack.",
+
+    "biggestWeakness": "I sometimes go deep into a problem when a simpler solution would have been fine. I am getting better at stepping back and asking what the minimum viable approach is before over-engineering.",
+
+    "whereDoYouSeeYourselfIn5Years": "Building AI systems at a larger scale — ideally as a lead or principal engineer on a team where AI is central to the business. I want to be the person who sets the architecture for how LLMs are integrated across a product, not just implementing features one at a time.",
+
+    "salaryExpectation": "I am looking at 65 to 70 dollars per hour on W2 or C2C.",
+    "whyShouldWeHireYou": "Because I have actually shipped LLM applications in production, not just built demos. I know what breaks — prompt injection, hallucination, latency, cost at scale — and I know how to handle it. I bring both the AI expertise and the full stack engineering to build things that actually work in production."
+  }
 }

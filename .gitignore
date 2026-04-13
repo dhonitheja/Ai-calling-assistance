@@ -1,19 +1,41 @@
-# Environment — NEVER commit these
+# Environment
 .env
 .env.local
 .env.*.local
 frontend/.env
+*.env
 
-# Build artifacts
+# Build & Dependencies
+target/
 backend/target/
 frontend/dist/
 frontend/node_modules/
+node_modules/
+.npm/
+package-lock.json (if using yarn or wanting to keep it local)
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
-# IDE
+# Recordigs & Logs
+recordings/
+*.log
+logs/
+
+# Java / Maven
+.mvn/
+mvnw
+mvnw.cmd
+.factorypath
+
+# IDEs
 .idea/
 *.iml
 .vscode/
+*.sublime-project
+*.sublime-workspace
 
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini

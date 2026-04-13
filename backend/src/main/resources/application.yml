@@ -5,6 +5,13 @@ server:
 spring:
   application:
     name: ai-call-screener
+  # BUG FIX: Spring Boot auto-configures Redis and will fail startup if the server
+  # is unreachable. Since Redis is not required for core call functionality,
+  # disable auto-configuration so the app starts without it.
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.redis.RedisRepositoriesAutoConfiguration
   data:
     redis:
       url: ${REDIS_URL:redis://localhost:6379}
@@ -59,5 +66,7 @@ cors:
 
 logging:
   level:
-    com.callscreen: DEBUG
-    org.springframework.web.socket: DEBUG
+    com.callscreen: INFO
+    # BUG FIX: Spring WebSocket at DEBUG level logs every binary audio frame (~100/sec),
+    # making logs unreadable and filling disk rapidly during live calls. Use WARN in prod.
+    org.springframework.web.socket: WARN

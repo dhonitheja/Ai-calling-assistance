@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
+import okhttp3.ResponseBody;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -128,16 +129,24 @@ public class ElevenLabsService {
                     .url(String.format(TTS_URL, voiceId))
                     .post(RequestBody.create(bodyBytes, MediaType.parse("application/json")))
                     .addHeader("xi-api-key", apiKey)
-                    .addHeader("Accept", "audio/basic")
+                    // BUG FIX: Accept: audio/basic can cause 406 Not Acceptable on some
+                    // ElevenLabs model versions. Use */* and let output_format param control format.
+                    .addHeader("Accept", "*/*")
                     .build();
 
             try (Response response = httpClient.newCall(request).execute()) {
+                ResponseBody responseBody = response.body();
                 if (!response.isSuccessful()) {
-                    String errBody = response.body() != null ? response.body().string() : "";
+                    // BUG FIX: response.body() can be null; must check before calling .string()
+                    String errBody = responseBody != null ? responseBody.string() : "(no body)";
                     log.error("ElevenLabs error {}: {}", response.code(), errBody);
                     return null;
                 }
-                byte[] audio = response.body().bytes();
+                if (responseBody == null) {
+                    log.error("ElevenLabs returned empty body");
+                    return null;
+                }
+                byte[] audio = responseBody.bytes();
                 log.debug("ElevenLabs synthesized {} chars → {} bytes audio", cleanText.length(), audio.length);
                 return audio;
             }

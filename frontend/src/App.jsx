@@ -113,12 +113,14 @@ function CommandTab() {
 
   const simulateCall = () => {
     addLog('ai', '📞 Incoming call from +1 (555) 213-4421')
-    setTimeout(() => addLog('ai', '🤖 AI agent answering...'), 800)
-    setTimeout(() => addLog('ai', '🎙️ Caller: "Hi, I\'m Sarah from TechRecruit. Are you open to new opportunities?"'), 2200)
-    setTimeout(() => addLog('ai', '🤖 AI: "Thanks for reaching out Sarah! I\'m currently exploring roles..."'), 3800)
-    setTimeout(() => addLog('ai', '🎙️ Caller: "What\'s your experience with Kafka?"'), 5500)
-    setTimeout(() => addLog('ai', '🤖 AI: "I\'ve built Kafka pipelines processing 500K events/hour at TechCorp..."'), 6800)
-    setTimeout(() => addLog('ok', '✅ Call completed. Duration: 4m 32s — AI handled'), 10000)
+    setTimeout(() => addLog('ai', '🤖 AI agent answering — Deepgram STT connected'), 800)
+    setTimeout(() => addLog('ai', '🎙️ Caller: "Hi, is this Sai Teja? I am Sarah from TechRecruit. Are you open to new opportunities?"'), 2200)
+    setTimeout(() => addLog('ai', '🤖 AI: "Yes, actually I am open."'), 3800)
+    setTimeout(() => addLog('ai', '🎙️ Caller: "Great. What is your current role?"'), 5000)
+    setTimeout(() => addLog('ai', '🤖 AI: "I am an AI engineer at Frontier Communications, building LLM features on GCP with Vertex AI and Gemini."'), 6200)
+    setTimeout(() => addLog('ai', '🎙️ Caller: "What is your visa status?"'), 8000)
+    setTimeout(() => addLog('ai', '🤖 AI: "I am on STEM OPT, valid through June 2027. No sponsorship needed."'), 9200)
+    setTimeout(() => addLog('ok', '✅ Call completed. Duration: 3m 18s — AI handled. Transcript saved.'), 12000)
   }
 
   useEffect(() => {
@@ -369,21 +371,25 @@ function CommandTab() {
 
 // ── SimulateTab ────────────────────────────────────────────────
 const QUICK_QUESTIONS = [
-  "Tell me about your LLM integration experience",
-  "What's your experience with Vertex AI / Gemini?",
+  "Tell me about yourself",
+  "What do you do at Frontier Communications?",
   "Have you built RAG pipelines?",
-  "Are you open to remote work?",
+  "What is multi-model orchestration?",
+  "What is your visa status?",
+  "What is your expected salary?",
   "When can you start?",
-  "What's your experience with prompt engineering?",
+  "Are you open to relocation?",
+  "Tell me about your Wealthix project",
+  "What is your experience with Kafka?",
   "Are you IBM prompt engineering certified?",
-  "What's your expected salary?",
+  "Why are you leaving your current job?",
 ]
 
 function SimulateTab() {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      content: "Hi! I'm answering on Sai Teja Ragula's behalf. I'm an AI screening assistant — feel free to ask me anything a recruiter would ask: his LLM/GenAI experience, tech stack, certifications, availability, or salary expectations. How can I help you?"
+      content: "Hey, this is Teja. Go ahead — ask me anything a recruiter would ask. LLM and GenAI experience, tech stack, projects, certifications, availability, salary — whatever you want to cover."
     }
   ])
   const [input, setInput] = useState('')
@@ -429,7 +435,7 @@ function SimulateTab() {
         "relocat": "Yes, I'm open to relocation. I'm also fully comfortable with remote and hybrid arrangements — whatever works best for the team.",
         "remote": "Absolutely — I'm open to remote, hybrid, or onsite. I've worked in distributed environments and I'm fully equipped for it.",
         "start": "I have about a two-week notice period, so I could typically start within two to three weeks of an offer.",
-        "salary": "I'm open to discussion based on the role and the total compensation package. Happy to share a specific number once I know more about the opportunity.",
+        "salary": "I am looking at 65 to 70 dollars per hour on W2 or C2C.",
         "experience": "5+ years in software engineering, with the last 2+ years focused specifically on AI/LLM integration at Frontier Communications — Vertex AI, Gemini, Claude, RAG, multi-model orchestration.",
         "certif": "Yes — IBM Certified in Prompt Engineering (2024), Oracle Cloud Infrastructure AI Foundations (2024), and AWS Certified Solutions Architect – Associate (2025).",
         "kafka": "I use Kafka at Frontier for real-time AI processing pipelines — feeding data into LLM workflows asynchronously for high-throughput event-driven AI features.",
@@ -438,7 +444,7 @@ function SimulateTab() {
       }
       const lower = userMsg.toLowerCase()
       const match = Object.entries(fallbacks).find(([k]) => lower.includes(k))
-      const fallback = match ? match[1] : "Great question. With my 5+ years of experience and focus on LLM integration and GenAI, I'm well-positioned on that. Would you like to schedule a proper call to go deeper?"
+      const fallback = match ? match[1] : "That is a good question. With 5 plus years of software engineering experience and the last 3 years focused specifically on LLM and GenAI production systems, I am well suited for that. What else would you like to know?"
       setMessages(prev => [...prev, { role: 'assistant', content: fallback }])
     }
 

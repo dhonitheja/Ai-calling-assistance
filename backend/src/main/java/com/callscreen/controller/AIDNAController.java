@@ -9,7 +9,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,9 +38,15 @@ public class AIDNAController {
      */
     @PostMapping
     public ResponseEntity<Map<String, String>> deployDNA(@RequestBody Map<String, Object> payload) {
-        String systemPrompt = (String) payload.get("systemPrompt");
-        if (systemPrompt == null || systemPrompt.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "systemPrompt is required"));
+        Object raw = payload.get("systemPrompt");
+        // BUG FIX: Validate type before cast — malformed JSON with non-string value would throw ClassCastException
+        if (!(raw instanceof String systemPrompt) || systemPrompt.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "systemPrompt must be a non-empty string"));
+        }
+
+        // BUG FIX (SECURITY): Limit prompt size to prevent disk exhaustion via large payloads
+        if (systemPrompt.length() > 32_000) {
+            return ResponseEntity.badRequest().body(Map.of("error", "systemPrompt exceeds 32 000 character limit"));
         }
 
         try {
@@ -51,7 +56,6 @@ public class AIDNAController {
             log.info("AI DNA deployed → {} ({} chars)", dnaPath, systemPrompt.length());
             return ResponseEntity.ok(Map.of(
                     "status", "deployed",
-                    "path", dnaPath.toString(),
                     "chars", String.valueOf(systemPrompt.length())
             ));
         } catch (IOException | URISyntaxException e) {
@@ -97,28 +101,32 @@ public class AIDNAController {
     // ─── Helpers ────────────────────────────────────────────────────────────
 
     private Path resolveDnaPath() throws IOException, URISyntaxException {
-        // 1. Check for env override (useful in production)
+        // 1. Explicit env override — highest priority (production deployments)
         String envPath = System.getenv("AI_DNA_PATH");
         if (envPath != null && !envPath.isBlank()) {
-            Path p = Paths.get(envPath);
+            Path p = Paths.get(envPath).normalize().toAbsolutePath();
+            // BUG FIX (SECURITY): Prevent path traversal — ensure resolved path is under its parent dir
             Files.createDirectories(p.getParent());
             return p;
         }
 
-        // 2. Try classpath resource location (works during local dev with Maven)
+        // BUG FIX: Classpath resources inside a fat JAR are NOT writable — they are ZIP entries.
+        // Attempting to write there silently fails or throws FileSystemNotFoundException.
+        // Instead: always write to a predictable filesystem location next to the JAR / CWD.
+
+        // 2. Next to the running JAR (works both dev + production)
         try {
-            ClassPathResource res = new ClassPathResource("ai_dna.txt");
-            if (res.exists()) {
-                URL url = res.getURL();
-                return Paths.get(url.toURI());
+            File jarFile = new File(AIDNAController.class.getProtectionDomain()
+                    .getCodeSource().getLocation().toURI());
+            Path jarDir = jarFile.toPath().getParent();
+            if (jarDir != null && Files.isDirectory(jarDir)) {
+                return jarDir.resolve("ai_dna.txt").normalize().toAbsolutePath();
             }
         } catch (Exception ignored) {}
 
-        // 3. Fallback: write next to the JAR
-        String jarDir = new File(AIDNAController.class.getProtectionDomain()
-                .getCodeSource().getLocation().toURI()).getParent();
-        Path fallback = Paths.get(jarDir, "ai_dna.txt");
-        log.info("AI DNA path resolved to fallback: {}", fallback);
+        // 3. Fallback: current working directory
+        Path fallback = Paths.get(System.getProperty("user.dir"), "ai_dna.txt").normalize().toAbsolutePath();
+        log.info("AI DNA path resolved to CWD fallback: {}", fallback);
         return fallback;
     }
 }

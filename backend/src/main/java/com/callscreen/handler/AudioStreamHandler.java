@@ -68,6 +68,11 @@ public class AudioStreamHandler extends TextWebSocketHandler {
             handleCallerSpeech(session, transcript);
         });
 
+        // BUG FIX: Deepgram openStream returns null when API key is missing.
+        // Storing null is safe — all downstream usages already null-check dgWs.
+        if (dgWs == null) {
+            log.warn("⚠️ Deepgram unavailable — STT disabled for session {}", session.getId());
+        }
         activeStreams.put(session.getId(), dgWs);
     }
 
@@ -106,19 +111,25 @@ public class AudioStreamHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         log.info("🛑 Closed: {} status={}", session.getId(), status);
 
+        // BUG FIX: Close Deepgram BEFORE removing from map to avoid a race where
+        // a late transcript callback fires after cleanup and NPEs on removed state.
         okhttp3.WebSocket dgWs = activeStreams.remove(session.getId());
+        if (dgWs != null) deepgramService.closeStream(dgWs);
+
         String streamSid = streamSids.remove(session.getId());
         List<byte[]> chunks = callAudioChunks.remove(session.getId());
         List<SimulateRequest.ConversationMessage> history = callHistories.remove(session.getId());
         String caller = callerNumbers.remove(session.getId());
-        speakingFlags.remove(session.getId());
-        pendingInterrupt.remove(session.getId());
 
-        if (chunks != null && !chunks.isEmpty() && history != null) {
+        // Cancel any in-flight speaking thread cleanly
+        AtomicReference<String> interrupt = pendingInterrupt.remove(session.getId());
+        if (interrupt != null) interrupt.set("__session_closed__");
+        speakingFlags.remove(session.getId());
+
+        if (chunks != null && !chunks.isEmpty() && history != null && !history.isEmpty()) {
             recordingService.saveCallRecording(
                 streamSid != null ? streamSid : session.getId(), caller, chunks, history);
         }
-        if (dgWs != null) deepgramService.closeStream(dgWs);
     }
 
     // ─── Core speech handler ─────────────────────────────────────────────────
@@ -142,7 +153,16 @@ public class AudioStreamHandler extends TextWebSocketHandler {
         processUtterance(session, text);
     }
 
+    /** Returns true if the session has been torn down (closed sentinel set). */
+    private boolean isSessionClosed(WebSocketSession session) {
+        AtomicReference<String> interrupt = pendingInterrupt.get(session.getId());
+        return interrupt == null || "__session_closed__".equals(interrupt.get());
+    }
+
     private void processUtterance(WebSocketSession session, String text) {
+        // BUG FIX: Don't process utterances after session teardown
+        if (isSessionClosed(session)) return;
+
         AtomicBoolean speaking = speakingFlags.get(session.getId());
         if (speaking == null || !speaking.compareAndSet(false, true)) return;
 
@@ -213,7 +233,11 @@ public class AudioStreamHandler extends TextWebSocketHandler {
             // Check for interrupt before sending each sentence
             AtomicReference<String> interrupt = pendingInterrupt.get(session.getId());
             if (interrupt != null && interrupt.get() != null) {
-                log.info("⚡ Mid-speech interrupt detected — stopping after current sentence boundary");
+                log.info("⚡ Mid-speech interrupt detected — clearing buffered audio");
+                // BUG FIX: Send clear HERE (on interruption), not in sendSentenceAudio.
+                // This stops any audio already buffered in Twilio's jitter buffer.
+                String streamSid = streamSids.get(session.getId());
+                if (streamSid != null) sendClearSignal(session, streamSid);
                 break;
             }
 
@@ -229,9 +253,9 @@ public class AudioStreamHandler extends TextWebSocketHandler {
             String streamSid = streamSids.get(session.getId());
             if (streamSid == null) return;
 
-            // Send a clear signal first so Twilio stops any buffered audio
-            sendClearSignal(session, streamSid);
-
+            // BUG FIX: Do NOT send "clear" before every sentence — that would cut off
+            // the AI's own speech mid-word. Clear should only be sent when an
+            // interruption is detected (handled in sendBotSpeechInterruptible).
             String base64Audio = Base64.getEncoder().encodeToString(audioBytes);
             String payload = mapper.writeValueAsString(Map.of(
                     "event", "media",

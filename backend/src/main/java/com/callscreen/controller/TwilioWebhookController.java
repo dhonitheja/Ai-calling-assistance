@@ -252,10 +252,18 @@ public class TwilioWebhookController {
             @RequestParam(value = "CallDuration",required = false) String duration) {
 
         log.info("📊 {} → {} ({}s)", callSid, status, duration);
-        if ("completed".equals(status) || "failed".equals(status) || "canceled".equals(status)) {
+        if ("completed".equals(status) || "failed".equals(status) || "canceled".equals(status)
+                || "busy".equals(status) || "no-answer".equals(status)) {
+            // BUG FIX: "busy" and "no-answer" are terminal states too — without cleaning
+            // them up, callRooms and outboundToInbound entries leak for the lifetime of
+            // the process whenever your personal phone doesn't answer.
             sessionService.remove(callSid);
             callRooms.remove(callSid);
-            outboundToInbound.remove(callSid);
+            // Also clean up the reverse mapping if this was the outbound leg
+            String inboundSid = outboundToInbound.remove(callSid);
+            if (inboundSid != null) {
+                log.info("🧹 Cleaned outbound→inbound mapping: {} → {}", callSid, inboundSid);
+            }
         }
         return ResponseEntity.ok(Map.of("received", "true"));
     }

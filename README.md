@@ -11,23 +11,24 @@ The system utilizes a high-concurrency, low-latency AI pipeline to ensure natura
 ```mermaid
 graph TD
     A["Incoming Call"] -->|TwiML| B["Twilio Voice"]
-    B -->|WebSocket Stream| C["Spring Boot Backend"]
-    C -->|STT| D["Deepgram Nova-2"]
-    D -->|Text Context| E["LLM Brain (Claude)"]
-    E -->|RAG Retrieval| F["Vector Database"]
-    E -->|Response Text| G["TTS (ElevenLabs)"]
-    G -->|PCM Audio| B
-    B -->|Digital Voice| H["Caller Experience"]
+    B -->|WebSocket Media Stream| C["Spring Boot Backend"]
+    C -->|Real-time STT| D["Deepgram Nova-3"]
+    D -->|Transcript| E["LLM Brain (Claude 3.5 Sonnet)"]
+    E -->|RAG Retrieval| F["Pinecone Vector Store"]
+    E -->|Text Response| G["TTS (ElevenLabs Turbo v2.5)"]
+    G -->|μ-law Audio| B
+    B -->|Voice Response| H["Recruiter / Caller"]
 ```
 
 ---
 
 ## ✨ Key Features
 
-- **Command Center**: Real-time dashboard for monitoring call interceptions, latency tracking, and system health.
-- **AI Training Studio (RAG)**: A dedicated environment to build your "AI DNA". Upload your experience data and refine AI responses for 25+ common interview scenarios.
-- **Interview Mode**: A high-fidelity simulator for practicing interviews against an AI that mimics real recruiter behavior.
-- **Toll-Free Integration**: Automated Twilio webhook handling for seamless call routing.
+- **Live Call Hand-off**: Seamlessly transfer calls between you and the AI agent via the dashboard or keypad shortcuts.
+- **Interruptible Speech**: The AI stops speaking instantly when the caller speaks, mimicking human conversation patterns.
+- **RAG-Powered Memory**: Ingests call transcripts into Pinecone after each interaction to improve context over time.
+- **AI DNA Configuration**: Refine responses using the `ai_dna.txt` system prompt and `resume.json` knowledge base.
+- **High Concurrency**: Built with Java 21 Virtual Threads (Project Loom) to handle multiple simultaneous calls effortlessly.
 
 ---
 
@@ -35,10 +36,11 @@ graph TD
 
 | Layer | Technology |
 |-------|------------|
-| **Frontend** | Next.js 14 (App Router), React, Framer Motion, CSS Modules |
-| **Backend** | Spring Boot 3.2, Java 21, Project Loom (Virtual Threads) |
-| **Speech-to-Text** | Deepgram Nova-2 (WebSocket Real-time) |
-| **LLM** | Anthropic Claude 3.5 Sonnet / GPT-4o |
+| **Frontend** | React, Vite, Framer Motion, Vanilla CSS (Glassmorphism) |
+| **Backend** | Spring Boot 3.2, Java 21, Project Loom |
+| **Voice Processing** | Twilio Media Streams (WebSocket) |
+| **Speech-to-Text** | Deepgram Nova-3 |
+| **LLM** | Anthropic Claude 3.5 Sonnet |
 | **Text-to-Speech** | ElevenLabs Turbo v2.5 |
 | **Vector DB** | Pinecone |
 
@@ -47,51 +49,55 @@ graph TD
 ## ⚙️ Setup & Installation
 
 ### 1. Prerequisites
-- Java 21 (JDK)
-- Node.js 20+
-- Twilio Account (for phone number and webhooks)
-- API Keys for Deepgram, Anthropic, ElevenLabs, and Pinecone
+- **Java 21** (JDK)
+- **Node.js 20+**
+- **Twilio Account** (with a phone number)
+- **API Keys**: Deepgram, Anthropic, ElevenLabs, Pinecone
 
 ### 2. Environment Configuration
 
-**Frontend (`voice-ai-agent/.env.local`):**
-```env
-NEXT_PUBLIC_BACKEND_URL=http://localhost:8080
-ANTHROPIC_API_KEY=your_anthropic_key
-DEEPGRAM_API_KEY=your_deepgram_key
-ELEVENLABS_API_KEY=your_elevenlabs_key
-PINECONE_API_KEY=your_pinecone_key
+**Clone the repository:**
+```bash
+git clone https://github.com/dhonitheja/Ai-calling-assistance.git
+cd Ai-calling-assistance
 ```
 
-**Backend (`backend/src/main/resources/application.yml`):**
-Configure your Twilio credentials and service endpoints in the YAML configuration.
+**Backend Configuration (`backend/src/main/resources/application.yml`):**
+Fill in your API keys and Twilio credentials.
+
+**Frontend Configuration (`frontend/.env`):**
+```env
+VITE_API_BASE_URL=http://localhost:8080
+```
 
 ### 3. Running Locally
 
 **Start the Backend:**
 ```bash
 cd backend
-./mvnw spring-boot:run
+mvn spring-boot:run
 ```
 
 **Start the Frontend:**
 ```bash
-cd voice-ai-agent
+cd frontend
 npm install
 npm run dev
 ```
+
+**Webhook Connection:**
+Use `ngrok` or `localtunnel` to expose port 8080 and set the Twilio Voice Webhook to:
+`https://your-public-url.ngrok-free.app/api/calls/incoming`
 
 ---
 
 ## 🚢 Deployment
 
-The application is container-ready and can be deployed to any major cloud provider (GCP Cloud Run, AWS App Runner, etc.).
+**Docker Build:**
+Both `frontend/` and `backend/` contain production-ready Dockerfiles.
 
-**Basic Deployment Steps:**
-1. Build the Docker images for both frontend and backend.
-2. Push to a Container Registry.
-3. Deploy as a serverless service or to a Kubernetes cluster.
-4. Set the Twilio voice webhook to your deployed backend URL: `https://your-api-domain.com/api/calls/incoming`.
+1. **Backend**: Build and deploy to GCP Cloud Run or AWS App Runner.
+2. **Frontend**: Build (`npm run build`) and serve via Nginx (included in Dockerfile) or deploy to Vercel/Netlify.
 
 ---
 

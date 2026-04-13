@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
+import okhttp3.ResponseBody;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -90,7 +91,10 @@ public class ClaudeService {
 
             ObjectNode body = mapper.createObjectNode();
             body.put("model", model);
-            body.put("max_tokens", 120);  // hard cap — forces short spoken answers
+            // 160 tokens: enough for a full technical answer in 2-3 spoken sentences,
+            // but still short enough to prevent rambling monologues.
+            // Phone speech at normal pace = ~130 words/min = 160 tokens ≈ 10-12 seconds.
+            body.put("max_tokens", 160);
             body.put("system", buildSystemPrompt(webContext));
 
             ArrayNode messages = mapper.createArrayNode();
@@ -124,13 +128,23 @@ public class ClaudeService {
                     .build();
 
             try (Response response = httpClient.newCall(request).execute()) {
+                ResponseBody responseBody = response.body();
                 if (!response.isSuccessful()) {
-                    String errBody = response.body() != null ? response.body().string() : "no body";
+                    String errBody = responseBody != null ? responseBody.string() : "no body";
                     log.error("Claude API error: {} — {}", response.code(), errBody);
-                    return "Sorry, could you give me just a moment? Something's not connecting right.";
+                    return "Sorry, could you give me just a moment? Something is not connecting right.";
                 }
-                JsonNode root = mapper.readTree(response.body().string());
-                return root.path(FIELD_CONTENT).get(0).path("text").asText();
+                if (responseBody == null) {
+                    log.error("Claude returned null response body");
+                    return "Sorry, I missed that — can you say that again?";
+                }
+                JsonNode root = mapper.readTree(responseBody.string());
+                JsonNode content = root.path(FIELD_CONTENT);
+                if (!content.isArray() || content.isEmpty()) {
+                    log.error("Claude response has no content: {}", root);
+                    return "Sorry, I missed that — can you say that again?";
+                }
+                return content.get(0).path("text").asText();
             }
         } catch (IOException e) {
             log.error("Claude call failed: {}", e.getMessage());
@@ -211,7 +225,7 @@ public class ClaudeService {
                    - Visa / Work Authorization: "I'm on STEM OPT, valid through June 30, 2027. No sponsorship needed."
                    - Availability: "I can start in about two weeks."
                    - Location: "I'm in Dallas, Texas. Open to remote, hybrid, or onsite."
-                   - Salary: "I'm open to discussion, but targeting around 130 to 145k base depending on the total package."
+                   - Salary / rate: "I am looking at 65 to 70 dollars per hour on W2 or C2C."
                    - Relocation: "Yes, I'm open to relocation."
                    - Graduation (Master's): "May 2024, Governor's State University."
                    - Graduation (Bachelor's): "2020, St. Peter's Engineering College."
@@ -225,19 +239,51 @@ public class ClaudeService {
                 userName, userName, userName, resume, webSection);
     }
 
+    /**
+     * Loads the AI DNA prompt. Priority order:
+     * 1. AI_DNA_PATH env var (production override written by AIDNAController)
+     * 2. Next to the running JAR (written by AIDNAController at runtime)
+     * 3. Classpath resource (bundled in the JAR at build time — the default)
+     *
+     * This mirrors AIDNAController.resolveDnaPath() so writes and reads use the same path.
+     */
     private String loadCustomDnaPrompt() {
+        // 1. Env-var override
+        String envPath = System.getenv("AI_DNA_PATH");
+        if (envPath != null && !envPath.isBlank()) {
+            try {
+                java.nio.file.Path p = java.nio.file.Paths.get(envPath);
+                if (java.nio.file.Files.exists(p)) {
+                    String content = java.nio.file.Files.readString(p, StandardCharsets.UTF_8).trim();
+                    if (!content.isBlank()) return content;
+                }
+            } catch (Exception e) {
+                log.warn("Could not read AI_DNA_PATH {}: {}", envPath, e.getMessage());
+            }
+        }
+
+        // 2. Next to the JAR (written at runtime by AIDNAController)
+        try {
+            java.io.File jarFile = new java.io.File(ClaudeService.class.getProtectionDomain()
+                    .getCodeSource().getLocation().toURI());
+            java.nio.file.Path jarDnaPath = jarFile.toPath().getParent().resolve("ai_dna.txt");
+            if (java.nio.file.Files.exists(jarDnaPath)) {
+                String content = java.nio.file.Files.readString(jarDnaPath, StandardCharsets.UTF_8).trim();
+                if (!content.isBlank()) return content;
+            }
+        } catch (Exception ignored) {}
+
+        // 3. Classpath fallback (bundled default)
         try {
             ClassPathResource resource = new ClassPathResource("ai_dna.txt");
             if (resource.exists()) {
                 try (InputStream is = resource.getInputStream()) {
                     String content = new String(is.readAllBytes(), StandardCharsets.UTF_8).trim();
-                    if (!content.isBlank()) {
-                        return content;
-                    }
+                    if (!content.isBlank()) return content;
                 }
             }
         } catch (Exception e) {
-            log.warn("Could not load ai_dna.txt: {}", e.getMessage());
+            log.warn("Could not load ai_dna.txt from classpath: {}", e.getMessage());
         }
         return null;
     }
