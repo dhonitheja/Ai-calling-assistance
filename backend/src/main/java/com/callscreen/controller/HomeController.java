@@ -8,7 +8,7 @@ import java.util.Map;
 @RestController
 public class HomeController {
 
-    @GetMapping("/")
+    @GetMapping("/api/status")
     public Map<String, String> index() {
         return Map.of(
             "status", "UP",
