@@ -74,7 +74,7 @@ Certifications:
 - [Certification 2]
 
 ══════════════════════════════════════════
- WHAT YOU BUILT AT FRONTIER (KEY FACTS)
+ WHAT YOU BUILT (KEY FACTS)
 ══════════════════════════════════════════
 
 - Integrated AI services into enterprise workflows

@@ -16,7 +16,7 @@
   "yearsOfExperience": "5+ years",
   "yearsOfExperience": "5+ years total software development. 3+ years hands-on AI/LLM production work.",
 
-  "summary": "AI Engineer with 5 plus years of software development experience and deep hands-on expertise building production AI applications using Large Language Models. Currently at Frontier Communications building LLM-powered features on Google Cloud Platform with Vertex AI and Gemini. Based in McKinney, TX. Skilled in multi-model orchestration, RAG pipelines, agentic workflows, and prompt engineering. Strong full stack background with Java Spring Boot backend and React TypeScript frontend. Experienced deploying AI systems on GCP and AWS with Kubernetes and Docker. IBM certified in Prompt Engineering. Oracle AI Foundations certified. AWS Solutions Architect certified.",
+  "summary": "AI Engineer with 5 plus years of software development experience and deep hands-on expertise building production AI applications using Large Language Models. Currently building LLM-powered features on Google Cloud Platform with Vertex AI and Gemini. Skilled in multi-model orchestration, RAG pipelines, agentic workflows, and prompt engineering. Strong full stack background with Java Spring Boot backend and React TypeScript frontend. Experienced deploying AI systems on GCP and AWS with Kubernetes and Docker.",
 
   "skills": {
     "aiAndLLMs": [
@@ -92,11 +92,11 @@
 
   "experience": [
     {
-      "company": "Frontier Communications",
-      "title": "AI/Software Engineer",
+      "company": "[Company Name]",
+      "title": "AI / Software Engineer",
       "duration": "January 2023 – Present",
-      "location": "McKinney, TX",
-      "description": "Frontier is a major US telecom provider. I work as a Java Full Stack Developer on their enterprise team, building LLM-powered features and microservices on GCP and AWS.",
+      "location": "[City, State]",
+      "description": "[Company] is a major US telecom provider. I work as a Java Full Stack Developer on their enterprise team, building LLM-powered features and microservices on GCP and AWS.",
       "highlights": [
         "Integrated Vertex AI and Gemini 1.5 into enterprise telecom applications to automate customer-facing workflows that previously required human agents",
         "Built a multi-model orchestration layer routing requests to Gemini Flash for simple queries and Gemini Pro for complex reasoning — reduced response latency by 40 percent while cutting cost",
