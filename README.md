@@ -93,5 +93,4 @@ In the Twilio Console, set your Number's **Voice Webhook** to:
 ## 🔒 Privacy & Safety
 This project is designed with privacy in mind. Ensure you do not commit your `.env` file. Modify `src/main/resources/ai_dna.txt` and `resume.json` to reflect your own background before deploying.
 
-## 📄 License
-MIT License - Feel free to use, modify, and distribute!
+
