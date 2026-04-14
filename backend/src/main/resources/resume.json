@@ -1,21 +1,22 @@
 {
-  "name": "Sai Teja Ragula",
-  "title": "AI Engineer | LLM Integration | GenAI | Full Stack",
-  "location": "Dallas, TX",
-  "email": "Saitejaragula007@gmail.com",
-  "phone": "+1 (312) 838-4016",
-  "linkedinUrl": "linkedin.com/in/sairagula",
-  "githubUrl": "github.com/dhonitheja",
+  "name": "[Full Name]",
+  "title": "Software Engineer | AI Integration",
+  "location": "[City, State]",
+  "email": "[Email Address]",
+  "phone": "[Phone Number]",
+  "linkedinUrl": "linkedin.com/in/[username]",
+  "githubUrl": "github.com/[username]",
   "openToRelocation": true,
   "remotePreference": "Open to Remote, Hybrid, or Onsite",
   "noticePeriod": "2 weeks",
-  "expectedSalary": "65 to 70 dollars per hour on W2 or C2C",
-  "workAuthorization": "STEM OPT — valid through June 30, 2027. No sponsorship needed.",
-  "visaStatus": "STEM OPT valid through June 30, 2027. No H1-B sponsorship required.",
-  "availability": "Available for interviews immediately. Can start in 2 weeks.",
+  "expectedSalary": "[Expected Rate]",
+  "workAuthorization": "[Visa Status Info]",
+  "visaStatus": "[Visa Status Info]",
+  "availability": "Available for interviews immediately.",
+  "yearsOfExperience": "5+ years",
   "yearsOfExperience": "5+ years total software development. 3+ years hands-on AI/LLM production work.",
 
-  "summary": "AI Engineer with 5 plus years of software development experience and deep hands-on expertise building production AI applications using Large Language Models. Currently at Frontier Communications in Dallas building LLM-powered features on Google Cloud Platform with Vertex AI and Gemini. Skilled in multi-model orchestration, RAG pipelines, agentic workflows, and prompt engineering. Strong full stack background with Java Spring Boot backend and React TypeScript frontend. Experienced deploying AI systems on GCP and AWS with Kubernetes and Docker. IBM certified in Prompt Engineering. Oracle AI Foundations certified. AWS Solutions Architect certified.",
+  "summary": "AI Engineer with 5 plus years of software development experience and deep hands-on expertise building production AI applications using Large Language Models. Currently at Frontier Communications building LLM-powered features on Google Cloud Platform with Vertex AI and Gemini. Based in McKinney, TX. Skilled in multi-model orchestration, RAG pipelines, agentic workflows, and prompt engineering. Strong full stack background with Java Spring Boot backend and React TypeScript frontend. Experienced deploying AI systems on GCP and AWS with Kubernetes and Docker. IBM certified in Prompt Engineering. Oracle AI Foundations certified. AWS Solutions Architect certified.",
 
   "skills": {
     "aiAndLLMs": [
@@ -94,19 +95,23 @@
       "company": "Frontier Communications",
       "title": "AI/Software Engineer",
       "duration": "January 2023 – Present",
-      "location": "Dallas, TX",
-      "description": "Frontier is a major US telecom provider. I work on their enterprise AI team building LLM-powered features on GCP.",
+      "location": "McKinney, TX",
+      "description": "Frontier is a major US telecom provider. I work as a Java Full Stack Developer on their enterprise team, building LLM-powered features and microservices on GCP and AWS.",
       "highlights": [
         "Integrated Vertex AI and Gemini 1.5 into enterprise telecom applications to automate customer-facing workflows that previously required human agents",
-        "Built a multi-model orchestration layer that routes incoming requests to Gemini Flash for simple queries and Gemini Pro for complex reasoning — reduced average response latency by 40 percent while cutting cost",
-        "Implemented NLP-based SMS integration using LLM classification to automatically categorize and respond to customer text messages at scale",
-        "Designed and built RAG pipelines — chunked internal documentation, embedded with OpenAI text-embedding-3-small, stored in Pinecone, and wired to Gemini for context-aware answers",
-        "Engineered production prompt templates with chain-of-thought reasoning, few-shot examples, and output format constraints for consistent, reliable LLM outputs",
-        "Built agentic workflows using function calling where the AI can query internal APIs, look up account info, and take actions on behalf of customers",
-        "Developed full stack features with Java Spring Boot REST APIs and React TypeScript frontend — end to end ownership",
-        "Deployed AI-integrated microservices on GCP Cloud Run with Docker and Kubernetes, handling autoscaling under variable load",
-        "Built event-driven AI processing pipelines using Apache Kafka — real-time stream processing for customer interaction data",
-        "Achieved 90 percent plus code coverage through unit and integration testing of AI integration layers using JUnit and Mockito"
+        "Built a multi-model orchestration layer routing requests to Gemini Flash for simple queries and Gemini Pro for complex reasoning — reduced response latency by 40 percent while cutting cost",
+        "Implemented NLP-based SMS classification using LLM to automatically categorize and respond to customer text messages at scale",
+        "Designed and built RAG pipelines — chunked internal documentation, embedded with OpenAI text-embedding-3-small, stored in Pinecone, wired to Gemini for context-aware answers",
+        "Engineered production prompt templates with chain-of-thought reasoning, few-shot examples, and output format constraints for reliable LLM outputs",
+        "Built agentic workflows using function calling where AI queries internal APIs, looks up account info, and takes actions on behalf of customers",
+        "Developed RESTful APIs using Spring Boot, Spring MVC, Spring IOC, and Spring Security; integrated with Apache Kafka for asynchronous messaging",
+        "Integrated Spring Boot microservices with Apache Kafka and deployed in Docker containers on AWS EC2; managed AWS IAM, Lambda, S3, Glue, and CloudWatch",
+        "Built React TypeScript frontend features including real-time dashboards, SPA components using React Hooks, React-Router, and Redux",
+        "Implemented CI/CD pipelines using Docker, Jenkins, and GitLab; deployed microservices on Docker and Amazon EC2 using Kubernetes",
+        "Implemented caching with Redis; developed PL/SQL backend for Oracle database and managed migrations to DB2",
+        "Integrated Splunk for centralized log analysis; built dashboards and alerts for proactive system monitoring",
+        "Utilized Kafka with Spark Streaming for real-time data processing, storing results in PostgreSQL on Docker and Kubernetes",
+        "Achieved 90 percent plus code coverage through JUnit and Mockito unit and integration tests"
       ]
     },
     {
@@ -114,12 +119,15 @@
       "title": "Software Engineer",
       "duration": "January 2022 – July 2022",
       "location": "India",
-      "description": "Worked as a backend engineer at Wipro on enterprise Java applications.",
+      "description": "Software Engineer at Wipro India working on enterprise Java applications and microservices.",
       "highlights": [
-        "Developed backend microservices using Java Spring Boot for enterprise B2B applications",
-        "Built and documented RESTful APIs consumed by frontend teams and third-party integrators",
-        "Implemented automated data processing workflows using Apache Kafka event streaming",
-        "Migrated legacy monolith components to containerized microservices using Docker and deployed via CI/CD pipelines on cloud infrastructure"
+        "Developed and optimized RESTful APIs with Spring Boot, reducing response times by 50 percent and improving throughput under heavy load",
+        "Designed data persistence layers using Hibernate and Spring Data JPA, eliminating manual query errors and streamlining CRUD operations",
+        "Automated test suites with JUnit and Selenium, driving a 35 percent reduction in bug-related incidents",
+        "Refactored legacy Java codebases, increasing processing speed by 20 percent through cleaner architecture",
+        "Architected microservices with Spring Cloud, improving system scalability by 40 percent",
+        "Implemented CI/CD pipelines using Jenkins and Docker, cutting deployment times by 60 percent",
+        "Deployed containerized services to AWS EKS via Kubernetes; enhanced observability using AWS CloudWatch and ELK Stack"
       ]
     },
     {
@@ -127,12 +135,17 @@
       "title": "Software Engineer",
       "duration": "December 2020 – January 2022",
       "location": "India",
-      "description": "Full stack developer building client-facing web applications.",
+      "description": "Software Engineer at Intellativ India building Java microservices and full stack web applications.",
       "highlights": [
-        "Built full stack web applications using Java Spring Boot backend and React JavaScript frontend",
-        "Developed real-time data processing systems using Apache Kafka for event-driven architecture",
-        "Implemented RESTful APIs and handled frontend-backend integration across the complete feature lifecycle",
-        "Deployed containerized applications on cloud platforms and maintained CI/CD pipelines"
+        "Built Java microservices using Spring Boot and Spring Cloud for scalable modular architecture",
+        "Exposed and consumed RESTful APIs with Spring MVC handling JSON/XML payloads and versioning",
+        "Managed data persistence via Hibernate and Spring Data JPA on MySQL and Oracle databases",
+        "Implemented asynchronous messaging with Apache Kafka and RabbitMQ for event-driven workflows",
+        "Containerized applications using Docker and orchestrated with Kubernetes on AWS EKS",
+        "Automated CI/CD pipelines in Jenkins and GitLab CI, cutting release times by 40 percent",
+        "Applied TDD with JUnit and Mockito achieving over 90 percent code coverage",
+        "Secured microservices using OAuth2/JWT and enforced role-based access control",
+        "Monitored performance with Prometheus and Grafana; centralized logging through ELK Stack"
       ]
     }
   ],
@@ -199,17 +212,12 @@
   ],
 
   "commonInterviewAnswers": {
-    "tellMeAboutYourself": "I am Sai Teja Ragula, an AI Engineer based in Dallas. I have 5 plus years of software development experience and for the past 3 years I have been focused specifically on building production LLM applications. I currently work at Frontier Communications where I integrate Vertex AI and Gemini into enterprise telecom workflows. My stack is Java Spring Boot on the backend, React TypeScript on the frontend, and GCP for cloud. I have built RAG pipelines, multi-model orchestration systems, and agentic AI workflows in production. I am currently looking for an AI or senior software engineering role where I can go deeper into applied LLM systems.",
-
-    "whyLeavingCurrentJob": "I have learned a lot at Frontier — shipping LLM features at enterprise scale has been great experience. I am now looking for a role that is even more AI-focused, ideally where AI is core to the product rather than a feature layer on top of an existing system.",
-
-    "biggestStrength": "I can take an AI concept from prototype to production end to end. I understand the LLM layer — prompting, RAG, orchestration — and I also understand the engineering underneath — APIs, distributed systems, cloud deployment. A lot of people are good at one or the other. I am comfortable across the full stack.",
-
-    "biggestWeakness": "I sometimes go deep into a problem when a simpler solution would have been fine. I am getting better at stepping back and asking what the minimum viable approach is before over-engineering.",
-
-    "whereDoYouSeeYourselfIn5Years": "Building AI systems at a larger scale — ideally as a lead or principal engineer on a team where AI is central to the business. I want to be the person who sets the architecture for how LLMs are integrated across a product, not just implementing features one at a time.",
-
-    "salaryExpectation": "I am looking at 65 to 70 dollars per hour on W2 or C2C.",
-    "whyShouldWeHireYou": "Because I have actually shipped LLM applications in production, not just built demos. I know what breaks — prompt injection, hallucination, latency, cost at scale — and I know how to handle it. I bring both the AI expertise and the full stack engineering to build things that actually work in production."
+    "tellMeAboutYourself": "I am a Full Stack and AI Engineer with over 5 years of experience building enterprise microservices and LLM-powered features. My stack includes Java Spring Boot, React, and various cloud-native AI services.",
+    "whyLeavingCurrentJob": "I am looking for a role where AI is even more core to the product architecture.",
+    "biggestStrength": "I can take an AI concept from prototype to production end to end, handling both the LLM logic and the underlying engineering.",
+    "biggestWeakness": "I sometimes over-engineer solutions, but I am learning to prioritize minimum viable approaches.",
+    "whereDoYouSeeYourselfIn5Years": "Leading AI architecture for complex products.",
+    "salaryExpectation": "[Expected Rate]",
+    "whyShouldWeHireYou": "I bring production experience with LLM applications and a strong full-stack engineering background."
   }
 }

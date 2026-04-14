@@ -44,11 +44,13 @@ public class DeepgramService {
         }
 
         String url = String.format(
-                // smart_format: capitalises, adds punctuation, formats numbers naturally
-                // utterance_end_ms: fires final transcript after 1000ms of silence (good for phone pauses)
-                // endpointing: 300ms silence threshold to detect end of utterance quickly
+                // utterance_end_ms requires interim_results=true to function correctly.
+                // endpointing=300: detect end of speech after 300ms silence for fast response.
+                // smart_format: capitalizes, punctuates, formats numbers naturally.
+                // interim_results=true + is_final filter: we process only final transcripts
+                // in onMessage, so interim results are received but ignored — no double-firing.
                 "wss://api.deepgram.com/v1/listen?model=%s&encoding=mulaw&sample_rate=8000" +
-                "&channels=1&punctuate=true&smart_format=true&interim_results=false" +
+                "&channels=1&punctuate=true&smart_format=true&interim_results=true" +
                 "&utterance_end_ms=1000&endpointing=300",
                 model
         );

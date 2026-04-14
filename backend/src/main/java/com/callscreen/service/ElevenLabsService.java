@@ -147,7 +147,7 @@ public class ElevenLabsService {
                     return null;
                 }
                 byte[] audio = responseBody.bytes();
-                log.debug("ElevenLabs synthesized {} chars → {} bytes audio", cleanText.length(), audio.length);
+                log.info("ElevenLabs synthesized {} chars → {} bytes audio", cleanText.length(), audio.length);
                 return audio;
             }
         } catch (IOException e) {

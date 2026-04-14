@@ -46,6 +46,7 @@ public class ClaudeService {
 
     private final ResumeService resumeService;
     private final WebSearchService webSearchService;
+    private final RagService ragService;
     private final ObjectMapper mapper = new ObjectMapper();
 
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
@@ -53,8 +54,9 @@ public class ClaudeService {
             .readTimeout(45, TimeUnit.SECONDS)
             .build();
 
-    private static final String CLAUDE_URL    = "https://api.anthropic.com/v1/messages";
-    private static final String FIELD_CONTENT = "content";
+    private static final String CLAUDE_URL     = "https://api.anthropic.com/v1/messages";
+    private static final String FIELD_CONTENT  = "content";
+    private static final String FALLBACK_RETRY = "Sorry, I missed that — can you say that again?";
 
     /**
      * Single-turn entry point from the audio pipeline.
@@ -80,14 +82,17 @@ public class ClaudeService {
         }
 
         try {
-            // Optionally enrich with web search for technical questions
+            // Run web search and RAG retrieval in parallel (both are best-effort, non-blocking)
             String webContext = null;
             if (webSearchService.isTechnicalQuestion(userMessage)) {
                 webContext = webSearchService.searchForContext(userMessage);
-                if (webContext != null) {
-                    log.debug("Web context fetched for: {}", userMessage);
-                }
+                if (webContext != null) log.debug("Web context fetched for: {}", userMessage);
             }
+
+            // RAG: retrieve past call Q/A pairs most similar to this question.
+            // These are answers Teja (the AI) gave in previous calls — injecting them makes
+            // the AI consistent: it converges on the same answer to the same question over time.
+            String ragContext = ragService.retrieveContext(userMessage, 3);
 
             ObjectNode body = mapper.createObjectNode();
             body.put("model", model);
@@ -95,7 +100,7 @@ public class ClaudeService {
             // but still short enough to prevent rambling monologues.
             // Phone speech at normal pace = ~130 words/min = 160 tokens ≈ 10-12 seconds.
             body.put("max_tokens", 160);
-            body.put("system", buildSystemPrompt(webContext));
+            body.put("system", buildSystemPrompt(webContext, ragContext)); // NOSONAR S1874 — Jackson put(String,String) is fine; SonarLint false positive
 
             ArrayNode messages = mapper.createArrayNode();
 
@@ -136,37 +141,54 @@ public class ClaudeService {
                 }
                 if (responseBody == null) {
                     log.error("Claude returned null response body");
-                    return "Sorry, I missed that — can you say that again?";
+                    return FALLBACK_RETRY;
                 }
                 JsonNode root = mapper.readTree(responseBody.string());
                 JsonNode content = root.path(FIELD_CONTENT);
                 if (!content.isArray() || content.isEmpty()) {
                     log.error("Claude response has no content: {}", root);
-                    return "Sorry, I missed that — can you say that again?";
+                    return FALLBACK_RETRY;
                 }
                 return content.get(0).path("text").asText();
             }
         } catch (IOException e) {
             log.error("Claude call failed: {}", e.getMessage());
-            return "Sorry, I missed that — can you say that again?";
+            return FALLBACK_RETRY;
         }
     }
 
     // ─── System prompt builder ───────────────────────────────────────────────
 
-    private String buildSystemPrompt(String webContext) {
+    private String buildSystemPrompt(String webContext, String ragContext) {
         String customPrompt = loadCustomDnaPrompt();
         String resume = resumeService.getResumeAsText();
 
+        StringBuilder prompt = new StringBuilder();
+
         if (customPrompt != null && !customPrompt.isBlank()) {
-            String prompt = customPrompt + "\n\n=== KNOWLEDGE BASE ===\n" + resume;
-            if (webContext != null) {
-                prompt += "\n\n=== REAL-TIME REFERENCE (use to answer technical question accurately) ===\n" + webContext;
-            }
-            return prompt;
+            prompt.append(customPrompt).append("\n\n=== KNOWLEDGE BASE ===\n").append(resume);
+        } else {
+            prompt.append(buildDefaultPrompt(resume, webContext));
         }
 
-        return buildDefaultPrompt(resume, webContext);
+        // RAG: inject the most relevant past-call answers so the AI stays consistent.
+        // These are exact Q/A pairs from previous calls — the AI learns its own best answers.
+        if (ragContext != null && !ragContext.isBlank()) {
+            prompt.append("""
+
+                    \n\n=== PAST CALL MEMORY (how you answered similar questions before) ===
+                    These are your own previous answers. Be consistent with them.
+                    Do NOT copy them word for word — use them as reference for tone and content.
+                    """);
+            prompt.append(ragContext);
+        }
+
+        if (webContext != null && !webContext.isBlank() && customPrompt != null && !customPrompt.isBlank()) {
+            prompt.append("\n\n=== REAL-TIME REFERENCE (use to answer technical question accurately) ===\n")
+                  .append(webContext);
+        }
+
+        return prompt.toString();
     }
 
     private String buildDefaultPrompt(String resume, String webContext) {

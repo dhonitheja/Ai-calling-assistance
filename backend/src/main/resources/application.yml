@@ -1,6 +1,13 @@
 server:
   port: ${PORT:8080}
   base-url: ${SERVER_BASE_URL:http://localhost:8080}
+  tomcat:
+    max-http-form-post-size: 10MB
+    connection-timeout: 20000
+    max-connections: 500
+    threads:
+      max: 200
+      min-spare: 20
 
 spring:
   application:
@@ -30,7 +37,7 @@ twilio:
 # User config
 user:
   real-phone: ${USER_REAL_PHONE:}
-  name: ${USER_NAME:Sai Teja Ragula}
+  name: ${USER_NAME:AI Assistant}
 
 # AI Services
 anthropic:
@@ -50,9 +57,9 @@ brave:
   search:
     api-key: ${BRAVE_SEARCH_API_KEY:}
 
-# Call recordings saved to local disk
-recordings:
-  dir: ${RECORDINGS_DIR:./recordings}
+# Call recordings — stored in Google Cloud Storage (48-hour lifecycle)
+gcs:
+  bucket: ${GCS_BUCKET:callscreen-recordings-166891801449}
 
 # Self-training: ingest call transcripts into Pinecone RAG after each call
 self:

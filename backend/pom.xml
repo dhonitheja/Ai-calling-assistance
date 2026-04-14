@@ -60,6 +60,13 @@
             <optional>true</optional>
         </dependency>
 
+        <!-- Google Cloud Storage — persists call recordings across container restarts -->
+        <dependency>
+            <groupId>com.google.cloud</groupId>
+            <artifactId>google-cloud-storage</artifactId>
+            <version>2.36.1</version>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

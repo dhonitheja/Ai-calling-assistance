@@ -92,6 +92,17 @@ public class AudioStreamHandler extends TextWebSocketHandler {
             }
             log.info("▶ Stream started: {} caller={}", streamSid, callerNum);
 
+            // Send a proactive greeting so the caller doesn't hear dead silence.
+            // Without this, callers wait for the AI to speak and hang up when they hear nothing.
+            Thread.ofVirtual().start(() -> {
+                try {
+                    // Small delay to let the Twilio stream fully establish before sending audio
+                    Thread.sleep(500);
+                } catch (InterruptedException ignored) {}
+                sendSentenceAudio(session, "Hey, this is Teja. Go ahead, I am listening.");
+                log.info("✅ Greeting sent to caller");
+            });
+
         } else if ("media".equals(event)) {
             String base64Audio = root.path("media").path("payload").asText();
             byte[] rawAudio = Base64.getDecoder().decode(base64Audio);
@@ -247,8 +258,12 @@ public class AudioStreamHandler extends TextWebSocketHandler {
 
     private void sendSentenceAudio(WebSocketSession session, String text) {
         try {
+            log.info("🗣 TTS: synthesizing [{}]", text);
             byte[] audioBytes = elevenLabsService.synthesize(text);
-            if (audioBytes == null || audioBytes.length == 0) return;
+            if (audioBytes == null || audioBytes.length == 0) {
+                log.warn("⚠️ TTS returned null/empty audio for: [{}]", text);
+                return;
+            }
 
             String streamSid = streamSids.get(session.getId());
             if (streamSid == null) return;
@@ -266,6 +281,7 @@ public class AudioStreamHandler extends TextWebSocketHandler {
             synchronized (session) {
                 if (session.isOpen()) {
                     session.sendMessage(new TextMessage(payload));
+                    log.info("🔊 Sent {} bytes audio to Twilio (streamSid={})", audioBytes.length, streamSid);
                 }
             }
         } catch (Exception e) {

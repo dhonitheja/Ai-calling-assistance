@@ -1,0 +1,72 @@
+{
+  "variant": "fullstack",
+  "targetRoles": ["Full Stack Engineer", "Software Engineer", "Senior Software Engineer", "Full Stack Developer"],
+
+  "summary": "Full Stack Software Engineer with 5 plus years of experience building scalable web applications end to end. Proficient in Java Spring Boot REST APIs, React TypeScript frontends, and cloud deployment on GCP and AWS. Strong foundation in microservices, event-driven architecture with Kafka, and relational and NoSQL databases. Currently embedding AI capabilities into enterprise full stack products at Frontier Communications.",
+
+  "keyStrengths": [
+    "End-to-end ownership: requirements → design → implementation → deployment → monitoring",
+    "Java Spring Boot expert: REST APIs, microservices, WebSocket, Spring Security, Spring Data JPA",
+    "React TypeScript: component architecture, Redux state management, performance optimization",
+    "Database design: PostgreSQL schema design, query optimization, MongoDB document modeling",
+    "Kafka event-driven pipelines: producer/consumer patterns, topic partitioning, consumer groups",
+    "Docker and Kubernetes: containerization, health checks, rolling deployments, resource limits",
+    "CI/CD: GitHub Actions workflows, Jenkins pipelines, automated testing gates",
+    "Test coverage: JUnit + Mockito for unit/integration, Jest + React Testing Library for frontend"
+  ],
+
+  "experience": [
+    {
+      "company": "Frontier Communications",
+      "title": "Full Stack / AI Software Engineer",
+      "duration": "January 2023 – Present",
+      "location": "Dallas, TX",
+      "fullStackHighlights": [
+        "Designed and built Java Spring Boot REST APIs consumed by millions of telecom customers — optimized for high concurrency with virtual threads and async processing",
+        "Built React TypeScript frontend features including real-time dashboards, drag-and-drop configuration UIs, and data visualization components",
+        "Integrated AI/LLM capabilities (Vertex AI, Gemini) into existing full stack applications as progressive enhancements — no big-bang rewrites",
+        "Architected event-driven microservices using Apache Kafka: producers publish customer events, AI consumers process them asynchronously, results published to downstream systems",
+        "Managed PostgreSQL schemas for high-volume data: indexing strategies, query optimization, connection pooling with HikariCP",
+        "Built internal developer tooling: Spring Boot admin APIs, monitoring dashboards, automated deployment scripts",
+        "Led code reviews and mentored junior developers on Spring Boot best practices, clean architecture, and testing discipline",
+        "Maintained 90 percent plus test coverage with JUnit, Mockito, and integration tests against real databases"
+      ]
+    },
+    {
+      "company": "Wipro",
+      "title": "Software Engineer",
+      "duration": "January 2022 – July 2022",
+      "location": "India",
+      "fullStackHighlights": [
+        "Built enterprise B2B application features in Java Spring Boot — REST endpoints, service layer business logic, repository-layer database access",
+        "Implemented input validation, error handling, and API versioning following REST best practices",
+        "Collaborated with frontend team on API contract design, reviewed React components consuming the APIs",
+        "Used Apache Kafka for asynchronous processing: decoupled order processing pipeline from UI request cycle",
+        "Wrote JUnit and Mockito test suites; participated in CI/CD pipeline maintenance on Jenkins"
+      ]
+    },
+    {
+      "company": "Intellativ India Private Limited",
+      "title": "Software Engineer",
+      "duration": "December 2020 – January 2022",
+      "location": "India",
+      "fullStackHighlights": [
+        "Built client-facing web applications full stack: Java Spring Boot backend, React JavaScript frontend",
+        "Designed PostgreSQL schemas for financial data — accounts, transactions, audit logs",
+        "Implemented authentication and authorization with Spring Security — JWT-based stateless auth",
+        "Built Kafka event-driven architecture for real-time financial event processing",
+        "Deployed applications on cloud with Docker, maintained staging and production environments",
+        "Built RESTful APIs from scratch following OpenAPI spec; generated Swagger documentation"
+      ]
+    }
+  ],
+
+  "technicalDepth": {
+    "springBoot": "3 plus years building production Spring Boot apps. Familiar with auto-configuration, bean lifecycle, AOP, Spring Security, Spring Data JPA, Spring WebSocket, and Spring Kafka. Know how to tune Tomcat thread pools, connection pools, and health check endpoints for production.",
+    "react": "2 plus years React TypeScript. Hooks, context, Redux Toolkit, React Query for server state. Know when to use memoization, when not to. Can build accessible, mobile-responsive UIs.",
+    "databases": "PostgreSQL primary. Know EXPLAIN ANALYZE, index types (B-tree, GIN for JSON), transaction isolation levels. MongoDB for document storage. Redis for caching and session state. Elasticsearch for full-text search.",
+    "kafka": "Built Kafka pipelines at Frontier and Intellativ. Know partitioning strategy, consumer group offsets, DLQ patterns, exactly-once semantics, and monitoring with consumer lag metrics.",
+    "docker": "Write multi-stage Dockerfiles, optimize layer caching, run non-root containers in production. Know health checks, graceful shutdown, resource limits.",
+    "testing": "JUnit 5, Mockito, Testcontainers for integration tests against real Postgres/Kafka. Jest and React Testing Library for frontend. Aim for 80 percent plus meaningful coverage, not vanity coverage."
+  }
+}

@@ -811,25 +811,48 @@ function ArchitectureTab() {
   )
 }
 
-// ── Call History Tab ──────────────────────────────────────────
-function CallHistoryTab() {
-  const [calls, setCalls] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState(null)
-  const [detail, setDetail] = useState(null)
-  const [detailLoading, setDetailLoading] = useState(false)
+// ── Call History Dashboard ─────────────────────────────────────
+function fmtDate(ts) {
+  if (!ts) return '—'
+  const m = ts.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})/)
+  if (!m) return ts
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
+  return `${months[parseInt(m[2])-1]} ${parseInt(m[3])}, ${m[1]}  ${m[4]}:${m[5]}`
+}
 
-  useEffect(() => {
+function fmtPhone(p) {
+  if (!p || p === 'unknown') return 'Unknown'
+  const d = p.replace(/\D/g,'')
+  if (d.length === 11 && d[0] === '1') return `+1 (${d.slice(1,4)}) ${d.slice(4,7)}-${d.slice(7)}`
+  return p
+}
+
+function CallHistoryTab() {
+  const [calls, setCalls]       = useState([])
+  const [loading, setLoading]   = useState(true)
+  const [search, setSearch]     = useState('')
+  const [selected, setSelected] = useState(null)
+  const [detail, setDetail]     = useState(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const [activeSection, setActiveSection] = useState('summary') // 'summary' | 'transcript' | 'audio'
+  const audioRef = useRef(null)
+
+  const refresh = () => {
+    setLoading(true)
     fetch('/api/calls/history')
       .then(r => r.ok ? r.json() : [])
       .then(data => { setCalls(data); setLoading(false) })
       .catch(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { refresh() }, [])
 
   const openCall = async (call) => {
-    if (selected === call.id) { setSelected(null); setDetail(null); return }
+    if (selected === call.id) return
     setSelected(call.id)
+    setDetail(null)
     setDetailLoading(true)
+    setActiveSection('summary')
     try {
       const res = await fetch(`/api/calls/history/${call.id}`)
       if (res.ok) setDetail(await res.json())
@@ -837,146 +860,287 @@ function CallHistoryTab() {
     setDetailLoading(false)
   }
 
-  if (loading) return (
-    <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>Loading call history...</div>
+  const filtered = calls.filter(c => {
+    const q = search.toLowerCase()
+    return !q || (c.caller||'').includes(q) || (c.summary||'').toLowerCase().includes(q) || (c.timestamp||'').includes(q)
+  })
+
+  // Stats
+  const totalCalls   = calls.length
+  const withSummary  = calls.filter(c => c.hasSummary).length
+  const withAudio    = calls.filter(c => c.hasAudio).length
+  const totalTurns   = calls.reduce((s, c) => s + (c.turns || 0), 0)
+
+  const pill = (label, color) => (
+    <span style={{
+      fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
+      background: `${color}18`, color, border: `1px solid ${color}40`,
+    }}>{label}</span>
   )
 
-  if (calls.length === 0) return (
-    <div style={{ padding: 32, textAlign: 'center', color: 'var(--text-muted)' }}>
-      No calls recorded yet. Calls will appear here after your first AI session.
-    </div>
+  const sectionBtn = (id, label) => (
+    <button onClick={() => setActiveSection(id)} style={{
+      padding: '6px 14px', fontSize: 12, fontWeight: 600, borderRadius: 6, cursor: 'pointer',
+      border: '1px solid var(--border)',
+      background: activeSection === id ? 'rgba(0,255,170,0.12)' : 'transparent',
+      color: activeSection === id ? 'var(--cyan)' : 'var(--text-muted)',
+      transition: 'all 0.15s',
+    }}>{label}</button>
   )
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: '16px 0' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-        <p style={{ color: 'var(--text-secondary)', fontSize: 13 }}>{calls.length} call{calls.length !== 1 ? 's' : ''} recorded</p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: '100%' }}>
+
+      {/* ── Stats bar ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+        {[
+          { label: 'Total Calls', value: totalCalls, color: 'var(--cyan)' },
+          { label: 'Summarized', value: withSummary, color: '#00ffaa' },
+          { label: 'With Audio', value: withAudio, color: '#7da9ff' },
+          { label: 'Total Turns', value: totalTurns, color: 'var(--text-primary)' },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="card" style={{ textAlign: 'center', padding: '14px 8px' }}>
+            <div style={{ fontSize: 28, fontWeight: 800, color, fontVariantNumeric: 'tabular-nums' }}>{value}</div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4, textTransform: 'uppercase', letterSpacing: 1 }}>{label}</div>
+          </div>
+        ))}
       </div>
 
-      {calls.map(call => (
-        <div key={call.id} className="card" style={{ cursor: 'pointer', transition: 'border-color 0.15s' }}
-          onClick={() => openCall(call)}>
+      {/* ── Main two-panel layout ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '340px 1fr', gap: 16, minHeight: 560 }}>
 
-          {/* Call row */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                <span style={{ fontFamily: 'monospace', color: 'var(--cyan)', fontWeight: 700, fontSize: 14 }}>
-                  {call.caller || 'Unknown'}
-                </span>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
-                  background: call.hasSummary ? 'rgba(0,255,170,0.12)' : 'rgba(255,255,255,0.06)',
-                  color: call.hasSummary ? 'var(--cyan)' : 'var(--text-muted)',
-                  border: `1px solid ${call.hasSummary ? 'rgba(0,255,170,0.25)' : 'var(--border)'}`,
-                }}>
-                  {call.hasSummary ? 'SUMMARIZED' : 'NO SUMMARY'}
-                </span>
-                {call.hasAudio && (
-                  <span style={{
-                    fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 4,
-                    background: 'rgba(100,150,255,0.12)', color: '#7da9ff',
-                    border: '1px solid rgba(100,150,255,0.25)',
-                  }}>AUDIO</span>
-                )}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                {call.timestamp ? (() => {
-                  // Format: "2024-01-15_14-32-00" → "Jan 15, 2024  14:32"
-                  const m = call.timestamp.match(/(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})/)
-                  if (m) {
-                    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-                    return `${months[parseInt(m[2])-1]} ${parseInt(m[3])}, ${m[1]}  ${m[4]}:${m[5]}`
-                  }
-                  return call.timestamp
-                })() : call.id}
-                {' · '}{call.turns} turn{call.turns !== 1 ? 's' : ''}
-              </div>
-            </div>
-            <div style={{ fontSize: 18, color: 'var(--text-muted)', flexShrink: 0 }}>
-              {selected === call.id ? '▲' : '▼'}
-            </div>
+        {/* LEFT: call list */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {/* Search + refresh */}
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Search calls…"
+              style={{
+                flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
+                borderRadius: 8, padding: '8px 12px', fontSize: 13, color: 'var(--text-primary)',
+                outline: 'none',
+              }}
+            />
+            <button onClick={refresh} title="Refresh" style={{
+              padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)',
+              background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: 14,
+            }}>↻</button>
           </div>
 
-          {/* Summary preview (collapsed) */}
-          {selected !== call.id && call.hasSummary && (
-            <p style={{ marginTop: 8, fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5,
-              overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
-              {call.summary}
-            </p>
-          )}
+          <div style={{ fontSize: 11, color: 'var(--text-muted)', paddingLeft: 2 }}>
+            {loading ? 'Loading…' : `${filtered.length} of ${totalCalls} calls`}
+          </div>
 
-          {/* Expanded detail */}
-          {selected === call.id && (
-            <div style={{ marginTop: 16, borderTop: '1px solid var(--border)', paddingTop: 16 }}>
-              {detailLoading ? (
-                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading...</div>
-              ) : detail ? (
-                <>
-                  {/* Summary */}
-                  {detail.hasSummary && (
-                    <div style={{ marginBottom: 16 }}>
-                      <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
-                        textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>AI Summary</p>
-                      <pre style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.7,
-                        whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0 }}>
-                        {detail.summary}
-                      </pre>
+          {/* Call list */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, overflowY: 'auto', maxHeight: 500 }}>
+            {!loading && filtered.length === 0 && (
+              <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                {totalCalls === 0
+                  ? 'No calls yet. Make a test call to see it here.'
+                  : 'No calls match your search.'}
+              </div>
+            )}
+            {filtered.map(call => (
+              <div key={call.id}
+                onClick={() => openCall(call)}
+                style={{
+                  padding: '12px 14px', borderRadius: 10, cursor: 'pointer',
+                  border: `1px solid ${selected === call.id ? 'rgba(0,255,170,0.4)' : 'var(--border)'}`,
+                  background: selected === call.id ? 'rgba(0,255,170,0.06)' : 'rgba(255,255,255,0.02)',
+                  transition: 'all 0.15s',
+                }}>
+                {/* Phone + badges */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: 'var(--cyan)' }}>
+                    {fmtPhone(call.caller)}
+                  </span>
+                  {call.hasSummary && pill('AI', '#00ffaa')}
+                  {call.hasAudio   && pill('🔊', '#7da9ff')}
+                </div>
+                {/* Date + turns */}
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 5 }}>
+                  {fmtDate(call.timestamp)}  ·  {call.turns} turn{call.turns !== 1 ? 's' : ''}
+                </div>
+                {/* Summary preview */}
+                {call.hasSummary && call.summary && (
+                  <p style={{
+                    fontSize: 11, color: 'var(--text-secondary)', lineHeight: 1.45, margin: 0,
+                    overflow: 'hidden', display: '-webkit-box',
+                    WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                  }}>{call.summary}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* RIGHT: detail panel */}
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', minHeight: 400, padding: 20 }}>
+          {!selected ? (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
+              justifyContent: 'center', color: 'var(--text-muted)', gap: 12 }}>
+              <div style={{ fontSize: 40 }}>📞</div>
+              <p style={{ fontSize: 14 }}>Select a call to view details</p>
+            </div>
+          ) : detailLoading ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--text-muted)', fontSize: 13 }}>Loading…</div>
+          ) : !detail ? (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'var(--text-muted)', fontSize: 13 }}>Could not load call detail.</div>
+          ) : (
+            <>
+              {/* Header */}
+              <div style={{ marginBottom: 16, paddingBottom: 14, borderBottom: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                  <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: 18, color: 'var(--cyan)' }}>
+                    {fmtPhone(detail.caller)}
+                  </span>
+                  {detail.hasSummary && pill('SUMMARIZED', '#00ffaa')}
+                  {detail.hasAudio   && pill('AUDIO', '#7da9ff')}
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 5 }}>
+                  {fmtDate(detail.timestamp)}
+                  {detail.turns ? `  ·  ${detail.turns} turn${detail.turns !== 1 ? 's' : ''}` : ''}
+                  {detail.callId ? (
+                    <span style={{ marginLeft: 8, fontFamily: 'monospace', fontSize: 10 }}>
+                      {detail.callId.slice(0,16)}…
+                    </span>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Section tabs */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                {sectionBtn('summary',    '📋 Summary')}
+                {sectionBtn('transcript', '💬 Transcript')}
+                {detail.hasAudio && sectionBtn('audio', '🔊 Audio')}
+              </div>
+
+              {/* ── Summary section ── */}
+              {activeSection === 'summary' && (
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  {detail.hasSummary ? (
+                    <pre style={{
+                      fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.75,
+                      whiteSpace: 'pre-wrap', fontFamily: 'inherit', margin: 0,
+                    }}>{detail.summary}</pre>
+                  ) : (
+                    <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                      No summary generated for this call yet.
                     </div>
                   )}
+                </div>
+              )}
 
-                  {/* Transcript */}
+              {/* ── Transcript section ── */}
+              {activeSection === 'transcript' && (
+                <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {(!detail.transcript || detail.transcript.length === 0) ? (
+                    <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>No transcript for this call.</div>
+                  ) : detail.transcript.map((turn, i) => {
+                    const isAI = turn.role === 'assistant'
+                    return (
+                      <div key={i} style={{
+                        display: 'flex', gap: 10, alignItems: 'flex-start',
+                        flexDirection: isAI ? 'row-reverse' : 'row',
+                      }}>
+                        {/* Avatar */}
+                        <div style={{
+                          width: 32, height: 32, borderRadius: '50%', flexShrink: 0,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 14, fontWeight: 700,
+                          background: isAI ? 'rgba(0,255,170,0.15)' : 'rgba(255,255,255,0.08)',
+                          color: isAI ? 'var(--cyan)' : 'var(--text-muted)',
+                          border: `1px solid ${isAI ? 'rgba(0,255,170,0.3)' : 'var(--border)'}`,
+                        }}>
+                          {isAI ? '🤖' : '👤'}
+                        </div>
+                        {/* Bubble */}
+                        <div style={{
+                          maxWidth: '75%', padding: '8px 12px', borderRadius: 10,
+                          fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.55,
+                          background: isAI ? 'rgba(0,255,170,0.07)' : 'rgba(255,255,255,0.04)',
+                          border: `1px solid ${isAI ? 'rgba(0,255,170,0.2)' : 'var(--border)'}`,
+                          borderBottomRightRadius: isAI ? 2 : 10,
+                          borderBottomLeftRadius:  isAI ? 10 : 2,
+                        }}>
+                          <div style={{
+                            fontSize: 10, fontWeight: 700, marginBottom: 4, textTransform: 'uppercase',
+                            color: isAI ? 'var(--cyan)' : 'var(--text-muted)', letterSpacing: 0.5,
+                          }}>
+                            {isAI ? 'Teja (AI)' : 'Caller'}
+                          </div>
+                          {turn.content}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+
+              {/* ── Audio section ── */}
+              {activeSection === 'audio' && detail.hasAudio && (
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
+                  <div style={{
+                    background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
+                    borderRadius: 12, padding: 20,
+                  }}>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                      Call recording · μ-law 8kHz decoded to WAV
+                    </p>
+                    {/* Native audio player */}
+                    <audio
+                      ref={audioRef}
+                      controls
+                      src={`/api/calls/audio/${detail.id}`}
+                      style={{ width: '100%', borderRadius: 8, outline: 'none' }}
+                    />
+                    <div style={{ marginTop: 14 }}>
+                      <a
+                        href={`/api/calls/audio/${detail.id}`}
+                        download={`call-${detail.id}.wav`}
+                        style={{
+                          fontSize: 12, color: '#7da9ff', textDecoration: 'none',
+                          display: 'inline-flex', alignItems: 'center', gap: 5,
+                          padding: '6px 12px', borderRadius: 6,
+                          border: '1px solid rgba(100,150,255,0.3)',
+                          background: 'rgba(100,150,255,0.08)',
+                        }}
+                      >
+                        ⬇ Download WAV
+                      </a>
+                    </div>
+                  </div>
+                  {/* Transcript alongside audio */}
                   {detail.transcript && detail.transcript.length > 0 && (
                     <div>
                       <p style={{ fontSize: 11, fontWeight: 700, color: 'var(--text-muted)',
-                        textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8 }}>Full Transcript</p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        textTransform: 'uppercase', letterSpacing: 1, marginBottom: 10 }}>
+                        Transcript Reference
+                      </p>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 200, overflowY: 'auto' }}>
                         {detail.transcript.map((turn, i) => (
-                          <div key={i} style={{
-                            display: 'flex', gap: 10, alignItems: 'flex-start',
-                            flexDirection: turn.role === 'assistant' ? 'row-reverse' : 'row'
-                          }}>
-                            <div style={{
-                              fontSize: 10, fontWeight: 700, flexShrink: 0, padding: '3px 7px',
-                              borderRadius: 4, marginTop: 2,
-                              background: turn.role === 'assistant' ? 'rgba(0,255,170,0.12)' : 'rgba(255,255,255,0.06)',
+                          <div key={i} style={{ fontSize: 12, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                            <span style={{
+                              fontWeight: 700, marginRight: 6,
                               color: turn.role === 'assistant' ? 'var(--cyan)' : 'var(--text-muted)',
                             }}>
-                              {turn.role === 'assistant' ? 'AI' : 'CALLER'}
-                            </div>
-                            <div style={{
-                              fontSize: 13, color: 'var(--text-primary)', lineHeight: 1.55,
-                              background: 'rgba(255,255,255,0.03)', borderRadius: 6,
-                              padding: '6px 10px', flex: 1,
-                              borderLeft: turn.role === 'user' ? '2px solid var(--border)' : 'none',
-                              borderRight: turn.role === 'assistant' ? '2px solid rgba(0,255,170,0.3)' : 'none',
-                            }}>
-                              {turn.content}
-                            </div>
+                              {turn.role === 'assistant' ? 'AI:' : 'Caller:'}
+                            </span>
+                            {turn.content}
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
-
-                  {/* Audio download */}
-                  {detail.hasAudio && (
-                    <div style={{ marginTop: 16, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
-                      <a href={`/api/calls/audio/${detail.id}`}
-                        style={{ fontSize: 12, color: '#7da9ff', textDecoration: 'none' }}
-                        onClick={e => e.stopPropagation()}>
-                        Download audio.wav
-                      </a>
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Could not load detail.</div>
+                </div>
               )}
-            </div>
+            </>
           )}
         </div>
-      ))}
+      </div>
     </div>
   )
 }

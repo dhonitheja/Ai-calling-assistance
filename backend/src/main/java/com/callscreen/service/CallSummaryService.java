@@ -5,15 +5,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.*;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -36,6 +34,7 @@ import java.util.concurrent.TimeUnit;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class CallSummaryService {
 
     @Value("${anthropic.api-key:}")
@@ -44,9 +43,7 @@ public class CallSummaryService {
     @Value("${anthropic.model:claude-sonnet-4-6}")
     private String model;
 
-    @Value("${recordings.dir:./recordings}")
-    private String recordingsDir;
-
+    private final GcsStorageService gcs;
     private final ObjectMapper mapper = new ObjectMapper();
     private static final String CLAUDE_URL = "https://api.anthropic.com/v1/messages";
 
@@ -145,30 +142,14 @@ public class CallSummaryService {
         }
     }
 
-    private void saveSummary(String callId, String summary) throws IOException {
-        // Find the matching call directory (same callId)
-        Path baseDir = Paths.get(recordingsDir);
-        if (!Files.exists(baseDir)) return;
-
-        // Look for directory containing this callId in transcript.json
-        try (var dirs = Files.list(baseDir)) {
-            dirs.filter(Files::isDirectory).forEach(dir -> {
-                Path transcriptPath = dir.resolve("transcript.json");
-                if (Files.exists(transcriptPath)) {
-                    try {
-                        String content = Files.readString(transcriptPath);
-                        if (content.contains(callId)) {
-                            Path summaryPath = dir.resolve("summary.txt");
-                            Files.writeString(summaryPath, summary, StandardCharsets.UTF_8,
-                                    StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-                            log.info("📋 Summary saved → {}", summaryPath);
-                        }
-                    } catch (IOException e) {
-                            log.warn("Could not write summary to {}: {}", dir, e.getMessage());
-                        }
-                }
-            });
+    private void saveSummary(String callId, String summary) {
+        String callDir = gcs.findDirByCallId(callId);
+        if (callDir == null) {
+            log.warn("Could not find GCS call dir for callId={}", callId);
+            return;
         }
+        gcs.writeSummary(callDir, summary);
+        log.info("📋 Summary saved → GCS calls/{}/summary.txt", callDir);
     }
 
     /** Fallback if Claude API is unavailable — builds summary from raw transcript */
