@@ -1,6 +1,8 @@
 import { querySimilar } from "@/lib/pinecone";
 import { NextResponse } from "next/server";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   try {
     const context = await querySimilar("tell me about your Kafka experience", 3);

@@ -118,7 +118,8 @@ public class RecordingService {
             int sample = ((mantissa << 3) + 132) << exponent;
             sample -= 132;
             if ((u & 0x80) == 0) sample = -sample;
-            pcm[i] = (short) Math.clamp(sample, Short.MIN_VALUE, Short.MAX_VALUE);
+            sample = Math.max(Short.MIN_VALUE, Math.min(Short.MAX_VALUE, sample));
+            pcm[i] = (short) sample;
         }
         return pcm;
     }

@@ -15,7 +15,8 @@ export async function POST(req: NextRequest) {
     if (!question || typeof question !== "string") {
       return NextResponse.json({ error: "question required" }, { status: 400 });
     }
-    const chunks = await querySimilar(question.trim(), topK);
+    const safeTopK = Number.isInteger(topK) ? Math.min(Math.max(topK, 1), 10) : 3;
+    const chunks = await querySimilar(question.trim(), safeTopK);
     return NextResponse.json({ chunks });
   } catch (error) {
     const e = error as Error;

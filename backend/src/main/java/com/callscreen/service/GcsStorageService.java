@@ -45,8 +45,13 @@ public class GcsStorageService {
         String objectName = PREFIX + callDir + "/" + filename;
         BlobId   blobId   = BlobId.of(bucket, objectName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId).setContentType(contentType).build();
-        storage().create(blobInfo, bytes);
-        log.debug("GCS write: gs://{}/{}", bucket, objectName);
+        try {
+            storage().create(blobInfo, bytes);
+            log.debug("GCS write: gs://{}/{}", bucket, objectName);
+        } catch (StorageException e) {
+            log.error("GCS write failed for gs://{}/{}: {}", bucket, objectName, e.getMessage());
+            throw e;
+        }
     }
 
     public void writeString(String callDir, String filename, String content) {
@@ -62,9 +67,14 @@ public class GcsStorageService {
     /** Returns the object bytes, or an empty array if the object does not exist. */
     public byte[] readBytes(String callDir, String filename) {
         String objectName = PREFIX + callDir + "/" + filename;
-        Blob blob = storage().get(BlobId.of(bucket, objectName));
-        if (blob == null) return new byte[0];
-        return blob.getContent();
+        try {
+            Blob blob = storage().get(BlobId.of(bucket, objectName));
+            if (blob == null) return new byte[0];
+            return blob.getContent();
+        } catch (StorageException e) {
+            log.warn("GCS read failed for gs://{}/{}: {}", bucket, objectName, e.getMessage());
+            return new byte[0];
+        }
     }
 
     /** Returns the object as a String, or null if the object does not exist. */
@@ -82,8 +92,13 @@ public class GcsStorageService {
 
     public boolean exists(String callDir, String filename) {
         String objectName = PREFIX + callDir + "/" + filename;
-        Blob blob = storage().get(BlobId.of(bucket, objectName));
-        return blob != null && blob.exists();
+        try {
+            Blob blob = storage().get(BlobId.of(bucket, objectName));
+            return blob != null && blob.exists();
+        } catch (StorageException e) {
+            log.warn("GCS exists check failed for gs://{}/{}: {}", bucket, objectName, e.getMessage());
+            return false;
+        }
     }
 
     // ─── List call directories ────────────────────────────────────────────────
@@ -94,14 +109,25 @@ public class GcsStorageService {
      */
     public List<String> listCallDirs() {
         List<String> dirs = new ArrayList<>();
-        Storage store = storage();
-        Page<Blob> page = store.list(bucket,
-                Storage.BlobListOption.prefix(PREFIX),
-                Storage.BlobListOption.fields(Storage.BlobField.NAME));
+        Page<Blob> page;
+        try {
+            Storage store = storage();
+            page = store.list(bucket,
+                    Storage.BlobListOption.prefix(PREFIX),
+                    Storage.BlobListOption.fields(Storage.BlobField.NAME));
+        } catch (StorageException e) {
+            log.warn("GCS list failed for bucket {}: {}", bucket, e.getMessage());
+            return dirs;
+        }
 
-        for (Blob blob : page.iterateAll()) {
-            String dir = extractCallDir(blob.getName());
-            if (dir != null && !dirs.contains(dir)) dirs.add(dir);
+        try {
+            for (Blob blob : page.iterateAll()) {
+                String dir = extractCallDir(blob.getName());
+                if (dir != null && !dirs.contains(dir)) dirs.add(dir);
+            }
+        } catch (StorageException e) {
+            log.warn("GCS list iteration failed for bucket {}: {}", bucket, e.getMessage());
+            return dirs;
         }
 
         // Sort descending — directory names start with timestamp so lexicographic = chronological
@@ -129,7 +155,7 @@ public class GcsStorageService {
     /** Returns a signed URL valid for 1 hour for audio download, or null on error. */
     public InputStream openAudioStream(String callDir) {
         byte[] bytes = readBytes(callDir, AUDIO_FILE);
-        if (bytes == null) return null;
+        if (bytes == null || bytes.length == 0) return null;
         return new java.io.ByteArrayInputStream(bytes);
     }
 

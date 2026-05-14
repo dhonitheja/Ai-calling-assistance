@@ -39,7 +39,9 @@ Why I built it: Indian SMBs have no affordable CRM with WhatsApp + UPI integrati
 Status: Passed security audit, in beta with 3 pilot customers`,
     rows: 8,
   },
-];
+] as const;
+
+type IntakeFieldId = (typeof INTAKE_FIELDS)[number]["id"];
 
 const STYLE_PROMPTS = [
   { id: "greet", q: "How do you typically open a call with a recruiter?", placeholder: 'e.g. "Hey! Yeah this is Teja, thanks for reaching out..."' },
@@ -52,7 +54,7 @@ const STYLE_PROMPTS = [
 
 export default function AITrainingStudio() {
   const [stage, setStage] = useState("intake");
-  const [intake, setIntake] = useState({
+  const [intake, setIntake] = useState<Record<IntakeFieldId, string>>({
     resume: `Sai Teja Ragula - AI/Software Engineer
 Email: Saitejaragula007@gmail.com | Phone: +1 (312) 838-4016 | LinkedIn: linkedin.com/in/sairagula
 Location:Dallas,TX United States (Open to Relocation / Remote)
@@ -118,8 +120,8 @@ Description: AI agent intercepting recruiter calls. Uses Twilio for phone layer,
   const [deployed, setDeployed] = useState(false);
   const [deploying, setDeploying] = useState(false);
   const [deployError, setDeployError] = useState<string | null>(null);
-  const [activeField, setActiveField] = useState(null);
-  const messagesEndRef = useRef(null);
+  const [activeField, setActiveField] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });

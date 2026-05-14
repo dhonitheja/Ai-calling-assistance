@@ -68,12 +68,11 @@ public class AudioStreamHandler extends TextWebSocketHandler {
             handleCallerSpeech(session, transcript);
         });
 
-        // BUG FIX: Deepgram openStream returns null when API key is missing.
-        // Storing null is safe — all downstream usages already null-check dgWs.
         if (dgWs == null) {
-            log.warn("⚠️ Deepgram unavailable — STT disabled for session {}", session.getId());
+            log.warn("Deepgram unavailable; STT disabled for session {}", session.getId());
+        } else {
+            activeStreams.put(session.getId(), dgWs);
         }
-        activeStreams.put(session.getId(), dgWs);
     }
 
     @Override
@@ -92,14 +91,13 @@ public class AudioStreamHandler extends TextWebSocketHandler {
             }
             log.info("▶ Stream started: {} caller={}", streamSid, callerNum);
 
-            // Send a proactive greeting so the caller doesn't hear dead silence.
-            // Without this, callers wait for the AI to speak and hang up when they hear nothing.
             Thread.ofVirtual().start(() -> {
                 try {
-                    // Small delay to let the Twilio stream fully establish before sending audio
                     Thread.sleep(500);
                 } catch (InterruptedException ignored) {}
-                sendSentenceAudio(session, "Hey, this is Teja. Go ahead, I am listening.");
+                if (!isSessionClosed(session)) {
+                    sendSentenceAudio(session, "Hey, this is Teja.");
+                }
                 log.info("✅ Greeting sent to caller");
             });
 
@@ -178,9 +176,15 @@ public class AudioStreamHandler extends TextWebSocketHandler {
         if (speaking == null || !speaking.compareAndSet(false, true)) return;
 
         List<SimulateRequest.ConversationMessage> history = callHistories.get(session.getId());
+        if (history == null) {
+            speaking.set(false);
+            return;
+        }
 
         Thread.ofVirtual().start(() -> {
             try {
+                if (isSessionClosed(session)) return;
+
                 // Build history snapshot WITHOUT the current message
                 // (ClaudeService adds the current message itself)
                 List<SimulateRequest.ConversationMessage> historySnapshot;
@@ -198,6 +202,8 @@ public class AudioStreamHandler extends TextWebSocketHandler {
                     log.info("⚡ Response discarded — interrupted before audio sent");
                     return;
                 }
+
+                if (isSessionClosed(session)) return;
 
                 // Add both turns to history
                 synchronized (history) {

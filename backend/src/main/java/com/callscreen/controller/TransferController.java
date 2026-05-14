@@ -69,8 +69,7 @@ public class TransferController {
         }
 
         try {
-            String streamTwimlUrl = serverBaseUrl + "/api/calls/handoff";
-            redirectCall(callSid, streamTwimlUrl);
+            redirectCallToTwiml(callSid, buildStreamTwiML(callSid));
             sessionService.updateMode(callSid, Mode.AI);
 
             log.info("✅ Transfer You→AI success: {}", callSid);
@@ -175,6 +174,48 @@ public class TransferController {
             }
             log.debug("Twilio redirect {} → {} : {}", callSid, twimlUrl, response.code());
         }
+    }
+
+    private void redirectCallToTwiml(String callSid, String twiml) throws IOException {
+        if (accountSid == null || accountSid.isBlank() || authToken == null || authToken.isBlank()) {
+            throw new IOException("Twilio credentials not configured");
+        }
+
+        String url = "https://api.twilio.com/2010-04-01/Accounts/" + accountSid + "/Calls/" + callSid + ".json";
+
+        FormBody formBody = new FormBody.Builder()
+                .add("Twiml", twiml)
+                .build();
+
+        Request request = new Request.Builder()
+                .url(url)
+                .post(formBody)
+                .addHeader("Authorization", Credentials.basic(accountSid, authToken))
+                .build();
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            String respBody = response.body() != null ? response.body().string() : "";
+            if (!response.isSuccessful()) {
+                throw new IOException("Twilio redirect failed " + response.code() + ": " + respBody);
+            }
+            log.debug("Twilio redirected {} to inline AI stream TwiML: {}", callSid, response.code());
+        }
+    }
+
+    private String buildStreamTwiML(String callSid) {
+        String wsUrl = serverBaseUrl
+                .replace("https://", "wss://")
+                .replace("http://", "ws://") + "/api/calls/stream";
+        return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <Response>
+                    <Connect>
+                        <Stream url="%s">
+                            <Parameter name="callSid" value="%s"/>
+                        </Stream>
+                    </Connect>
+                </Response>
+                """.formatted(wsUrl, callSid);
     }
 
     private String resolveCallSid(Map<String, String> body) {

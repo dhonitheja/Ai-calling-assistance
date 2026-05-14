@@ -40,7 +40,7 @@ public class CallSummaryService {
     @Value("${anthropic.api-key:}")
     private String apiKey;
 
-    @Value("${anthropic.model:claude-sonnet-4-6}")
+    @Value("${anthropic.model:claude-sonnet-4-5}")
     private String model;
 
     private final GcsStorageService gcs;
@@ -133,8 +133,14 @@ public class CallSummaryService {
 
             try (Response response = httpClient.newCall(request).execute()) {
                 if (!response.isSuccessful()) return buildFallbackSummary(caller, startedAt, history, handledBy);
-                JsonNode root = mapper.readTree(response.body().string());
-                return root.path("content").get(0).path("text").asText();
+                ResponseBody responseBody = response.body();
+                if (responseBody == null) return buildFallbackSummary(caller, startedAt, history, handledBy);
+                JsonNode root = mapper.readTree(responseBody.string());
+                JsonNode content = root.path("content");
+                if (!content.isArray() || content.isEmpty()) {
+                    return buildFallbackSummary(caller, startedAt, history, handledBy);
+                }
+                return content.get(0).path("text").asText(buildFallbackSummary(caller, startedAt, history, handledBy));
             }
         } catch (IOException e) {
             log.warn("Claude summary call failed: {}", e.getMessage());

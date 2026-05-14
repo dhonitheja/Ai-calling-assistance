@@ -38,7 +38,7 @@ public class ClaudeService {
     @Value("${anthropic.api-key:}")
     private String apiKey;
 
-    @Value("${anthropic.model:claude-sonnet-4-6}")
+    @Value("${anthropic.model:claude-sonnet-4-5}")
     private String model;
 
     @Value("${user.name:Sai Teja Ragula}")
@@ -54,9 +54,23 @@ public class ClaudeService {
             .readTimeout(45, TimeUnit.SECONDS)
             .build();
 
-    private static final String CLAUDE_URL     = "https://api.anthropic.com/v1/messages";
-    private static final String FIELD_CONTENT  = "content";
-    private static final String FALLBACK_RETRY = "Sorry, I missed that — can you say that again?";
+    private static final String CLAUDE_URL    = "https://api.anthropic.com/v1/messages";
+    private static final String FIELD_CONTENT = "content";
+
+    // Natural human-sounding fallbacks — rotated to avoid repetition
+    private static final String[] FALLBACKS_RETRY = {
+        "Hmm, I did not quite catch that — could you say it again?",
+        "Sorry, I think the line broke up a little. Can you repeat that?",
+        "I missed that — say it one more time?",
+        "Hold on, say that again — I think there was some static.",
+    };
+    private static final String[] FALLBACKS_ERROR = {
+        "Give me just one second.",
+        "Hold on a moment.",
+        "One second.",
+    };
+    private int retryIdx = 0;
+    private int errorIdx = 0;
 
     /**
      * Single-turn entry point from the audio pipeline.
@@ -78,7 +92,7 @@ public class ClaudeService {
 
     private String callClaude(String userMessage, List<SimulateRequest.ConversationMessage> history) {
         if (apiKey == null || apiKey.isBlank()) {
-            return "Hey, sorry — having a little tech hiccup on my end. Can I call you back?";
+            return nextError();
         }
 
         try {
@@ -96,6 +110,7 @@ public class ClaudeService {
 
             ObjectNode body = mapper.createObjectNode();
             body.put("model", model);
+            body.put("temperature", 0.55);
             // 160 tokens: enough for a full technical answer in 2-3 spoken sentences,
             // but still short enough to prevent rambling monologues.
             // Phone speech at normal pace = ~130 words/min = 160 tokens ≈ 10-12 seconds.
@@ -137,24 +152,32 @@ public class ClaudeService {
                 if (!response.isSuccessful()) {
                     String errBody = responseBody != null ? responseBody.string() : "no body";
                     log.error("Claude API error: {} — {}", response.code(), errBody);
-                    return "Sorry, could you give me just a moment? Something is not connecting right.";
+                    return nextError();
                 }
                 if (responseBody == null) {
                     log.error("Claude returned null response body");
-                    return FALLBACK_RETRY;
+                    return nextRetry();
                 }
                 JsonNode root = mapper.readTree(responseBody.string());
                 JsonNode content = root.path(FIELD_CONTENT);
                 if (!content.isArray() || content.isEmpty()) {
                     log.error("Claude response has no content: {}", root);
-                    return FALLBACK_RETRY;
+                    return nextRetry();
                 }
                 return content.get(0).path("text").asText();
             }
         } catch (IOException e) {
             log.error("Claude call failed: {}", e.getMessage());
-            return FALLBACK_RETRY;
+            return nextRetry();
         }
+    }
+
+    private synchronized String nextRetry() {
+        return FALLBACKS_RETRY[retryIdx++ % FALLBACKS_RETRY.length];
+    }
+
+    private synchronized String nextError() {
+        return FALLBACKS_ERROR[errorIdx++ % FALLBACKS_ERROR.length];
     }
 
     // ─── System prompt builder ───────────────────────────────────────────────
@@ -217,11 +240,12 @@ public class ClaudeService {
                    - When you pick up, say only: "Hello?" or "Hey, this is %s." — then STOP and listen.
                    - Never launch into a monologue. Be reactive, not proactive.
 
-                3. KEEP IT SHORT AND SPEAK LIKE AN INDIAN PROFESSIONAL.
+                3. KEEP IT SHORT AND SOUND LIKE A REAL PHONE CONVERSATION.
                    - Maximum 2 sentences per response. Often just 1 is enough.
-                   - You speak Indian English — confident, direct, slightly formal but warm.
-                   - Use fuller forms naturally: "I am" not "I'm", "do not" not "don't", "it is" not "it's"
-                   - Natural Indian English fillers when thinking: "Actually...", "Basically...", "So..."
+                   - Speak warmly and directly, with natural Indian professional cadence.
+                   - Use contractions only when they sound natural; do not sound scripted.
+                   - Use light thinking cues sparingly: "Actually", "So", "Yeah", "I mean".
+                   - Small self-corrections are okay if natural, but do not ramble.
                    - Rhythm: slightly deliberate, clear enunciation, not rushed.
                    - NO bullet points, NO lists, NO markdown. Pure spoken words only.
                    - DO NOT summarize your career unprompted. Do not say "I also..." or add extras.

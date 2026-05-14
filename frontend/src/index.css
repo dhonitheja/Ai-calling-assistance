@@ -677,6 +677,12 @@ html, body, #root {
 .code-block .cm { color: rgba(255,255,255,0.25); }
 .code-block .st { color: #fc6a5d; }
 
+/* ─── Spin animation ────────────────────────── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 /* ─── Utilities ─────────────────────────────── */
 .flex { display: flex; }
 .flex-col { flex-direction: column; }

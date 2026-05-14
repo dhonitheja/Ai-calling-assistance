@@ -143,6 +143,7 @@ public class TwilioWebhookController {
                         <Conference startConferenceOnEnter="true"
                                     endConferenceOnExit="false"
                                     beep="false"
+                                    record="do-not-record"
                                     muted="false">%s</Conference>
                     </Dial>
                 </Response>
@@ -278,7 +279,8 @@ public class TwilioWebhookController {
 
     /**
      * Puts the RECRUITER into a named conference room with hold music.
-     * They wait here until your phone is answered (~1-2 seconds).
+     * startConferenceOnEnter="false" — recruiter waits silently until your phone joins.
+     * They hear hold music instead of silence.
      */
     private String buildRecruiterConferenceTwiML(String roomName) {
         return """
@@ -286,8 +288,8 @@ public class TwilioWebhookController {
                 <Response>
                     <Dial>
                         <Conference waitUrl="https://twimlets.com/holdmusic?Bucket=com.twilio.music.ambient"
-                                    startConferenceOnEnter="true"
-                                    endConferenceOnExit="false"
+                                    startConferenceOnEnter="false"
+                                    endConferenceOnExit="true"
                                     beep="false"
                                     statusCallback="%s/api/calls/conference-status"
                                     statusCallbackMethod="POST">%s</Conference>
@@ -345,11 +347,17 @@ public class TwilioWebhookController {
                         + "&roomName="       + enc(roomName)
                         + "&callerFrom="     + enc(callerFrom != null ? callerFrom : "");
 
+                String statusCallbackUrl = serverBaseUrl + "/api/calls/status";
+
                 Call call = Call.creator(
                         new PhoneNumber(realPhone),
                         new PhoneNumber(twilioNumber),
                         URI.create(yourLegUrl)
-                ).create();
+                )
+                .setTimeout(20)  // ring for 20s before falling back to AI
+                .setStatusCallback(URI.create(statusCallbackUrl))
+                .setStatusCallbackMethod(com.twilio.http.HttpMethod.POST)
+                .create();
 
                 log.info("📲 Dialing your phone: {} → leg SID={}", realPhone, call.getSid());
 

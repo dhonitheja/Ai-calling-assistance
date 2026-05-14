@@ -39,31 +39,13 @@ public class ElevenLabsService {
             "https://api.elevenlabs.io/v1/text-to-speech/%s?output_format=ulaw_8000";
 
     /**
-     * Applies natural Indian English speech patterns to the text before TTS.
+     * Applies phone-speech cleanup before TTS while preserving natural wording.
      *
-     * Indian English characteristics:
-     * - Slightly more deliberate pacing — commas added at natural breath points
-     * - "actually" and "basically" used as natural thought connectors
-     * - Contractions less frequent ("I am" preferred over "I'm" in formal context)
-     * - Direct, confident phrasing without excessive hedging
-     * - Numbers and acronyms spaced for clarity (LLM → L L M)
      */
-    private String applyIndianEnglishStyle(String text) {
-        // Expand common contractions → fuller forms sound more natural in Indian English
-        text = text.replaceAll("\\bI'm\\b", "I am");
-        text = text.replaceAll("\\bI've\\b", "I have");
-        text = text.replaceAll("\\bI'd\\b", "I would");
-        text = text.replaceAll("\\bI'll\\b", "I will");
-        text = text.replaceAll("\\bdon't\\b", "do not");
-        text = text.replaceAll("\\bcan't\\b", "cannot");
-        text = text.replaceAll("\\bwon't\\b", "will not");
-        text = text.replaceAll("\\bdidn't\\b", "did not");
-        text = text.replaceAll("\\bhaven't\\b", "have not");
-        text = text.replaceAll("\\bwouldn't\\b", "would not");
-        text = text.replaceAll("\\bwe're\\b", "we are");
-        text = text.replaceAll("\\bthey're\\b", "they are");
-        text = text.replaceAll("\\bthat's\\b", "that is");
-        text = text.replaceAll("\\bit's\\b", "it is");
+    private String applyPhoneSpeechStyle(String text) {
+        // Preserve natural wording while cleaning artifacts that sound awkward over TTS.
+        text = text.replaceAll("\\s*[-–—]>\\s*", ", ");
+        text = text.replaceAll("\\(([^)]{1,40})\\)", ", $1,");
 
         // Spell out acronyms so TTS pronounces each letter clearly
         text = text.replaceAll("\\bLLM\\b", "L L M");
@@ -75,7 +57,8 @@ public class ElevenLabsService {
         text = text.replaceAll("\\bOPT\\b", "O P T");
 
         // Add natural pause after "So" / "Well" / "Yeah" at start of sentence
-        text = text.replaceAll("^(So|Well|Yeah|Yes|No),?\\s+", "$1, ");
+        text = text.replaceAll("^(So|Well|Yeah|Yes|No|Actually|Basically),?\\s+", "$1, ");
+        text = text.replaceAll("\\s{2,}", " ");
 
         return text.trim();
     }
@@ -102,20 +85,16 @@ public class ElevenLabsService {
 
         if (cleanText.isBlank()) return null;
 
-        // Apply Indian English naturalness transforms
-        cleanText = applyIndianEnglishStyle(cleanText);
+        // Apply phone-speech cleanup without making the text overly formal.
+        cleanText = applyPhoneSpeechStyle(cleanText);
 
         try {
             ObjectNode voiceSettings = mapper.createObjectNode();
-            // Tuned for Indian English accent naturalness:
-            // - stability 0.60: consistent accent rhythm, not too robotic
-            // - similarity_boost 0.65: gives ElevenLabs room to apply accent naturally
-            //   (too high = over-cloned American neutral, too low = drifts off voice)
-            // - style 0.30: expressive enough to sound like a real person talking
-            // - speaker_boost true: adds presence/warmth on phone quality audio
-            voiceSettings.put("stability", 0.60);
-            voiceSettings.put("similarity_boost", 0.65);
-            voiceSettings.put("style", 0.30);
+            // Balanced for phone calls: expressive enough to avoid a flat read,
+            // but stable enough that the voice does not drift between turns.
+            voiceSettings.put("stability", 0.50);
+            voiceSettings.put("similarity_boost", 0.72);
+            voiceSettings.put("style", 0.42);
             voiceSettings.put("use_speaker_boost", true);
 
             ObjectNode body = mapper.createObjectNode();

@@ -2,8 +2,15 @@ import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
   try {
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: "ELEVENLABS_API_KEY is not configured" }, { status: 503 });
+    }
+
     const { text } = await request.json();
-    if (!text) throw new Error("Missing text");
+    if (!text || typeof text !== "string") {
+      return NextResponse.json({ error: "Missing text" }, { status: 400 });
+    }
 
     const voiceId = process.env.ELEVENLABS_VOICE_ID || "21m00Tcm4TlvDq8ikWAM"; 
 
@@ -12,7 +19,7 @@ export async function POST(request: Request) {
       headers: {
         "Accept": "audio/mpeg",
         "Content-Type": "application/json",
-        "xi-api-key": process.env.ELEVENLABS_API_KEY as string,
+        "xi-api-key": apiKey,
       },
       body: JSON.stringify({
         text,
@@ -25,7 +32,8 @@ export async function POST(request: Request) {
     });
 
     if (!response.ok) {
-      throw new Error(`ElevenLabs API error: ${response.statusText}`);
+      const body = await response.text();
+      throw new Error(`ElevenLabs API error ${response.status}: ${body || response.statusText}`);
     }
 
     const audioBuffer = await response.arrayBuffer();

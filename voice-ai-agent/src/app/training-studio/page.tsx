@@ -69,8 +69,12 @@ const QUESTION_BANKS = {
   },
 };
 
+type Question = { id: string; q: string; defaultA: string };
+type QuestionBankId = keyof typeof QUESTION_BANKS;
+type CategoryMap = Record<string, Question[]>;
+
 export default function InterviewTrainingStudio() {
-  const [activeBank, setActiveBank] = useState("hiring-manager");
+  const [activeBank, setActiveBank] = useState<QuestionBankId>("hiring-manager");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -84,7 +88,7 @@ export default function InterviewTrainingStudio() {
   const [completedCount, setCompletedCount] = useState(0);
   const [tab, setTab] = useState("train");
 
-  const bank = QUESTION_BANKS[activeBank as keyof typeof QUESTION_BANKS];
+  const bank = QUESTION_BANKS[activeBank];
 
   // Initialize answers with defaults
   useEffect(() => {
@@ -202,7 +206,7 @@ Be direct, not fluffy.`,
     setIngesting(false);
   };
 
-  const currentCategories = bank.categories;
+  const currentCategories = bank.categories as CategoryMap;
   const activeCat = activeCategory || Object.keys(currentCategories)[0];
   const currentQs = currentCategories[activeCat] || [];
 
@@ -258,7 +262,7 @@ Be direct, not fluffy.`,
             {/* Bank switcher */}
             <div style={{ padding: "12px" }}>
               {Object.entries(QUESTION_BANKS).map(([id, b]) => (
-                <button key={id} className="btn" onClick={() => { setActiveBank(id); setActiveCategory(Object.keys(b.categories)[0]); }}
+                <button key={id} className="btn" onClick={() => { setActiveBank(id as QuestionBankId); setActiveCategory(Object.keys(b.categories)[0]); }}
                   style={{ width: "100%", padding: "10px 12px", marginBottom: "6px", background: activeBank === id ? `${b.color}22` : "transparent", border: `1px solid ${activeBank === id ? b.color : "#0f172a"}`, color: activeBank === id ? b.accent : "#475569", fontSize: "11px", textAlign: "left", display: "flex", alignItems: "center", gap: "8px" }}>
                   <span>{b.icon}</span>
                   <div>
@@ -273,9 +277,9 @@ Be direct, not fluffy.`,
 
             <div style={{ borderTop: "1px solid #0f172a", padding: "12px" }}>
               <div style={{ fontSize: "9px", color: "#334155", letterSpacing: "2px", marginBottom: "8px" }}>CATEGORIES</div>
-              {Object.keys(bank.categories).map(cat => {
-                const qs = bank.categories[cat];
-                const done = qs.filter(q => answers[q.id]?.trim().length > 20).length;
+              {Object.keys(currentCategories).map(cat => {
+                const qs = currentCategories[cat];
+                const done = qs.filter((q) => answers[q.id]?.trim().length > 20).length;
                 return (
                   <button key={cat} className="btn" onClick={() => setActiveCategory(cat)}
                     style={{ width: "100%", padding: "9px 12px", marginBottom: "4px", background: activeCat === cat ? "#0f172a" : "transparent", border: `1px solid ${activeCat === cat ? bank.color : "transparent"}`, color: activeCat === cat ? bank.accent : "#475569", fontSize: "10px", textAlign: "left", lineHeight: 1.4 }}>
